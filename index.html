@@ -2,549 +2,289 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Мастерская целей</title>
+<title>Закрыть кредит</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap');
 
   :root{
-    --linen:#EDE6D6;
-    --linen-dark:#E0D6BE;
-    --thread-blue:#3B5A78;
-    --thread-red:#B5483D;
-    --gold-pin:#C9A030;
-    --charcoal:#2B2620;
-    --sage:#7C9473;
-    --card:#F7F2E6;
-    --shadow: rgba(43,38,32,0.18);
+    --sky:#3FB6E8;
+    --sky-deep:#1E8FC4;
+    --sun:#FFC93C;
+    --coral:#FF6F61;
+    --leaf:#5FCB7A;
+    --grape:#8E6ADB;
+    --cream:#FFF8EC;
+    --ink:#1F3A4D;
   }
-
   *{box-sizing:border-box;}
   body{
     margin:0;
-    font-family:'Manrope',sans-serif;
-    background:
-      repeating-linear-gradient(0deg, rgba(0,0,0,0.015) 0px, rgba(0,0,0,0.015) 1px, transparent 1px, transparent 3px),
-      var(--linen);
-    color:var(--charcoal);
     min-height:100vh;
+    font-family:'Nunito',sans-serif;
+    background:
+      radial-gradient(circle at 15% 10%, #7FD4F0 0%, transparent 45%),
+      radial-gradient(circle at 90% 85%, #FFE38A 0%, transparent 40%),
+      linear-gradient(160deg,var(--sky) 0%, var(--sky-deep) 100%);
+    color:var(--ink);
+    padding:20px 14px 60px;
+  }
+  h1,h2{font-family:'Baloo 2',cursive; margin:0;}
+  .wrap{max-width:640px; margin:0 auto;}
+
+  .header{
+    text-align:center;
+    color:#fff;
+    margin-bottom:18px;
+  }
+  .header h1{
+    font-size:28px;
+    text-shadow:0 3px 0 rgba(0,0,0,0.15);
+  }
+  .header p{margin:4px 0 0; font-size:13.5px; opacity:0.9; font-weight:700;}
+
+  .card{
+    background:var(--cream);
+    border-radius:22px;
+    padding:20px;
+    box-shadow:0 10px 0 rgba(0,0,0,0.12), 0 14px 26px rgba(0,0,0,0.25);
+    margin-bottom:18px;
   }
 
-  h1,h2,h3{font-family:'Fraunces',serif; margin:0;}
-
-  .wrap{
-    max-width:1100px;
-    margin:0 auto;
-    padding:28px 20px 60px;
-  }
-
-  header{
-    display:flex;
-    align-items:baseline;
-    justify-content:space-between;
-    margin-bottom:22px;
-    border-bottom:2px dashed rgba(43,38,32,0.25);
-    padding-bottom:14px;
-  }
-  header h1{font-size:26px; font-weight:600; letter-spacing:0.2px;}
-  header .sub{font-size:13px; color:#6b6255; font-weight:500;}
-
-  .layout{
-    display:grid;
-    grid-template-columns:1.15fr 0.85fr;
-    gap:22px;
-  }
-  @media(max-width:800px){ .layout{grid-template-columns:1fr;} }
-
-  .panel{
-    background:var(--card);
+  .setup-row{display:flex; gap:10px; flex-wrap:wrap; align-items:end;}
+  .field{display:flex; flex-direction:column; gap:4px; flex:1; min-width:140px;}
+  .field label{font-size:12px; font-weight:800; color:#6b5a3f;}
+  .field input{
+    border:3px solid #E9DCC0;
     border-radius:14px;
-    box-shadow:0 6px 18px var(--shadow);
-    padding:18px 18px 20px;
-    position:relative;
-  }
-  .panel::before{
-    content:"";
-    position:absolute;
-    top:10px; left:50%;
-    width:26px; height:26px;
-    background:var(--gold-pin);
-    border-radius:50%;
-    transform:translateX(-50%);
-    box-shadow:0 3px 4px rgba(0,0,0,0.25), inset 0 -3px 4px rgba(0,0,0,0.2), inset 0 2px 3px rgba(255,255,255,0.35);
-  }
-  .panel-inner{margin-top:20px;}
-
-  .panel h2{font-size:17px; margin-bottom:4px;}
-  .panel .hint{font-size:12.5px; color:#7a7264; margin-bottom:14px;}
-
-  /* --- Tree --- */
-  .node{
-    margin:6px 0 6px 0;
-    position:relative;
-  }
-  .node-row{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    background:var(--linen);
-    border-radius:9px;
-    padding:8px 10px;
-    border:1px solid rgba(43,38,32,0.08);
-  }
-  .node-row.leaf-done{
-    background:rgba(124,148,115,0.18);
-    border-color:rgba(124,148,115,0.4);
-  }
-  .node-row.branch-complete{
-    background:rgba(201,160,48,0.14);
-    border-color:rgba(201,160,48,0.4);
-  }
-  .node-check{
-    width:20px;height:20px;
-    border-radius:5px;
-    border:2px solid var(--thread-blue);
-    display:flex; align-items:center; justify-content:center;
-    cursor:pointer; flex-shrink:0;
-    background:#fff;
-    font-size:13px; color:transparent;
-  }
-  .node-check.checked{
-    background:var(--sage);
-    border-color:var(--sage);
-    color:#fff;
-  }
-  .node-check.disabled{cursor:default; opacity:0.55;}
-  .node-title{
-    flex:1;
-    font-size:14.5px;
-    font-weight:600;
-  }
-  .node-title.done{ text-decoration: line-through; color:#8a8272; font-weight:500;}
-  .node-badge{
-    font-size:10.5px;
-    color:#8a8272;
-    background:rgba(43,38,32,0.06);
-    padding:2px 7px;
-    border-radius:20px;
-    white-space:nowrap;
-  }
-  .add-child-btn{
-    border:none; background:none; cursor:pointer;
-    color:var(--thread-blue); font-size:16px; line-height:1;
-    padding:2px 5px; border-radius:6px;
-  }
-  .add-child-btn:hover{background:rgba(59,90,120,0.12);}
-  .del-btn{
-    border:none;background:none;cursor:pointer;
-    color:#b06a5f; font-size:13px; opacity:0.55; padding:2px 5px;
-  }
-  .del-btn:hover{opacity:1;}
-
-  .children{
-    margin-left:26px;
-    padding-left:14px;
-    border-left:2px dotted rgba(43,38,32,0.2);
-    margin-top:6px;
-  }
-
-  .add-inline{
-    display:flex; gap:6px; margin-top:6px; margin-left:26px;
-  }
-  .add-inline input{
-    flex:1;
-    border:1px solid rgba(43,38,32,0.2);
-    border-radius:7px;
-    padding:6px 9px;
-    font-family:'Manrope',sans-serif;
-    font-size:13px;
-    background:#fff;
-  }
-  .add-inline button{
-    border:none;
-    background:var(--thread-blue);
-    color:#fff;
-    border-radius:7px;
-    padding:6px 12px;
-    font-size:12.5px;
-    font-weight:600;
-    cursor:pointer;
-  }
-
-  .new-goal-row{
-    display:flex; gap:8px; margin-top:16px;
-  }
-  .new-goal-row input{
-    flex:1;
-    border:1.5px dashed rgba(43,38,32,0.3);
-    border-radius:9px;
     padding:9px 12px;
-    font-family:'Fraunces',serif;
-    font-size:15px;
-    background:transparent;
-  }
-  .new-goal-row button{
-    border:none;
-    background:var(--thread-red);
-    color:#fff;
-    border-radius:9px;
-    padding:9px 16px;
-    font-weight:600;
-    cursor:pointer;
-    font-size:13px;
-  }
-
-  /* --- Merge board --- */
-  .board{
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:10px;
-    padding-top:6px;
-  }
-  .tier-row{
-    display:flex;
-    justify-content:center;
-    flex-wrap:wrap;
-    gap:10px;
-    width:100%;
-  }
-  .spool{
-    width:56px; height:56px;
-    border-radius:12px;
-    display:flex; align-items:center; justify-content:center;
-    font-size:22px;
-    background:var(--linen-dark);
-    border:2px solid rgba(43,38,32,0.12);
-    position:relative;
-    transition:transform .25s ease, box-shadow .25s ease, background .25s ease;
-  }
-  .spool.locked{opacity:0.35;}
-  .spool.progress{
+    font-family:'Nunito',sans-serif;
+    font-weight:700;
+    font-size:16px;
     background:#fff;
-    border-color:var(--thread-blue);
-    box-shadow:0 0 0 3px rgba(59,90,120,0.12);
   }
-  .spool.merged{
-    background:linear-gradient(160deg,#F3E3AE,var(--gold-pin));
-    border-color:var(--gold-pin);
-    box-shadow:0 4px 10px rgba(201,160,48,0.45);
-    transform:scale(1.08);
-    animation:pop .4s ease;
+  .btn{
+    border:none;
+    border-radius:14px;
+    padding:11px 18px;
+    font-weight:800;
+    font-size:14px;
+    cursor:pointer;
+    color:#fff;
+    box-shadow:0 4px 0 rgba(0,0,0,0.18);
   }
-  @keyframes pop{
-    0%{transform:scale(0.7); opacity:0.3;}
-    70%{transform:scale(1.15);}
-    100%{transform:scale(1.08);}
+  .btn:active{transform:translateY(2px); box-shadow:0 2px 0 rgba(0,0,0,0.18);}
+  .btn-sky{background:var(--sky-deep);}
+  .btn-coral{background:var(--coral);}
+  .btn-leaf{background:var(--leaf);}
+
+  .progress-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:10px;
   }
-  .spool-label{
-    position:absolute;
-    bottom:-18px;
-    font-size:9.5px;
-    color:#7a7264;
-    width:80px;
+  .progress-head .amounts{font-family:'Baloo 2',cursive; font-size:19px; color:var(--sky-deep);}
+  .progress-head .pct{
+    background:var(--sun);
+    color:#7A5300;
+    font-weight:800;
+    font-size:13px;
+    padding:4px 12px;
+    border-radius:20px;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(10, 1fr);
+    gap:6px;
+    margin:10px 0 4px;
+  }
+  .cell{
+    aspect-ratio:1;
+    border-radius:8px;
+    background:#EDE4CD;
+    border:2px solid rgba(0,0,0,0.05);
+    transition:all .35s cubic-bezier(.34,1.56,.64,1);
+  }
+  .cell.filled{
+    background:linear-gradient(155deg,#FFD873,var(--sun));
+    box-shadow:0 0 0 2px rgba(255,201,60,0.4), inset 0 -3px 4px rgba(0,0,0,0.12), inset 0 2px 3px rgba(255,255,255,0.5);
+    animation:cellpop .4s ease;
+  }
+  @keyframes cellpop{
+    0%{transform:scale(0.3); opacity:0;}
+    70%{transform:scale(1.2);}
+    100%{transform:scale(1);}
+  }
+
+  .goal-banner{
     text-align:center;
-    left:50%; transform:translateX(-50%);
+    padding:10px;
+    border-radius:14px;
+    background:linear-gradient(120deg,var(--leaf),#3FA85C);
+    color:#fff;
+    font-family:'Baloo 2',cursive;
+    font-size:16px;
+    margin-top:10px;
+    display:none;
+    box-shadow:0 4px 0 rgba(0,0,0,0.15);
+  }
+  .goal-banner.show{display:block; animation:cellpop .5s ease;}
+
+  .payment-form{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:14px;
+    padding-top:14px;
+    border-top:2px dashed #E9DCC0;
+  }
+  .payment-form input{
+    border:2px solid #E9DCC0;
+    border-radius:12px;
+    padding:8px 11px;
+    font-family:'Nunito',sans-serif;
+    font-size:13.5px;
     font-weight:600;
   }
+  .payment-form input.amount{width:110px; font-weight:800;}
+  .payment-form input.note{flex:1; min-width:150px;}
 
-  .finish-line{
-    margin-top:34px;
-    text-align:center;
+  .off-plan-toggle{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:12.5px;
+    font-weight:700;
+    color:#8a5a3f;
+    margin-top:8px;
+    cursor:pointer;
+    user-select:none;
   }
-  .finish-garment{
-    width:78px; height:78px;
-    margin:0 auto 8px;
-    border-radius:16px;
-    display:flex; align-items:center; justify-content:center;
-    font-size:34px;
-    background:var(--linen-dark);
-    border:2px solid rgba(43,38,32,0.12);
-    transition:all .3s ease;
-  }
-  .finish-garment.done{
-    background:linear-gradient(160deg,#F3E3AE,var(--gold-pin));
-    border-color:var(--gold-pin);
-    box-shadow:0 6px 16px rgba(201,160,48,0.5);
-    animation:pop .5s ease;
-  }
-  .finish-text{
-    font-family:'Fraunces',serif;
-    font-size:14px;
-    color:#6b6255;
-  }
-  .finish-text.done{color:var(--thread-red); font-weight:600;}
+  .off-plan-toggle input{transform:scale(1.1);}
 
-  .empty-note{
-    font-size:13px; color:#8a8272; text-align:center; padding:30px 10px;
+  .history{margin-top:6px;}
+  .history h2{font-size:15px; margin-bottom:8px;}
+  .payment-item{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:8px 10px;
+    border-radius:12px;
+    background:#fff;
+    margin-bottom:6px;
+    font-size:13px;
+    border-left:5px solid var(--leaf);
   }
+  .payment-item.off-plan{border-left-color:var(--coral);}
+  .payment-item .amt{font-weight:800; color:var(--sky-deep);}
+  .payment-item .note{color:#6b6255; font-weight:600; flex:1; margin:0 8px;}
+  .payment-item .tag{font-size:10.5px; font-weight:800; color:var(--coral);}
+  .empty{font-size:13px; color:#8a8272; text-align:center; padding:10px;}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <h1>Мастерская целей</h1>
-    <div class="sub">дерево задач слева · доска слияния справа</div>
-  </header>
+  <div class="header">
+    <h1>🪙 Закрыть кредит</h1>
+    <p>каждый платёж закрашивает ячейку</p>
+  </div>
 
-  <div class="layout">
-    <div class="panel">
-      <div class="panel-inner">
-        <h2>Дерево задачи</h2>
-        <div class="hint">Отмечай пункты без подзадач. Когда закрыты все "дети" — родитель закрывается сам.</div>
-        <div id="tree"></div>
-        <div class="new-goal-row">
-          <input id="newGoalInput" placeholder="Новая цель, например: Закрыть кредит" />
-          <button onclick="addGoal()">Добавить цель</button>
-        </div>
+  <div class="card">
+    <div class="setup-row" id="setupRow">
+      <div class="field">
+        <label>Сумма долга, грн</label>
+        <input type="number" id="targetInput" placeholder="8000" value="8000">
       </div>
+      <button class="btn btn-sky" onclick="setTarget()">Задать цель</button>
     </div>
+  </div>
 
-    <div class="panel">
-      <div class="panel-inner">
-        <h2>Доска слияния</h2>
-        <div class="hint">Каждый узел — катушка. Все дети закрыты → катушки сливаются в родительскую.</div>
-        <div id="board"></div>
-      </div>
+  <div class="card">
+    <div class="progress-head">
+      <div class="amounts"><span id="savedAmt">0</span> / <span id="targetAmt">8000</span> грн</div>
+      <div class="pct" id="pctBadge">0%</div>
     </div>
+    <div class="grid" id="grid"></div>
+    <div class="goal-banner" id="goalBanner">🎉 Кредит закрыт!</div>
+
+    <div class="payment-form">
+      <input class="amount" type="number" id="payAmount" placeholder="Сумма">
+      <input class="note" type="text" id="payNote" placeholder="За что / откуда (необязательно)">
+      <button class="btn btn-leaf" onclick="addPayment(false)">+ Внести платёж</button>
+    </div>
+    <label class="off-plan-toggle">
+      <input type="checkbox" id="offPlanCheck">
+      это незапланированная трата в сторону — просто хочу отметить
+    </label>
+  </div>
+
+  <div class="card history">
+    <h2>История</h2>
+    <div id="historyList"></div>
   </div>
 </div>
 
 <script>
-// --- Data model ---
-// node: {id, title, done (only meaningful for leaves), children: []}
-let goals = [
-  {
-    id: 'g1',
-    title: 'Закрыть кредит',
-    done: false,
-    children: [
-      { id: 'c1', title: 'Закрыть месяц', done: false, children: [
-        { id: 'c1a', title: 'Свести бюджет за месяц', done: false, children: [] },
-        { id: 'c1b', title: 'Оплатить текущие счета', done: false, children: [] }
-      ]},
-      { id: 'c2', title: 'Найти деньги', done: false, children: [
-        { id: 'c2a', title: 'Заказ на Fiverr', done: false, children: [] },
-        { id: 'c2b', title: 'Продать лишнее', done: false, children: [] }
-      ]},
-      { id: 'c3', title: 'Оплатить кредит', done: false, children: [] }
-    ]
-  }
-];
+let target = 8000;
+let saved = 0;
+let payments = []; // {amount, note, offPlan}
+const CELLS = 40;
 
-let idCounter = 100;
-const uid = () => 'n' + (idCounter++);
-
-function isLeaf(node){ return node.children.length === 0; }
-
-// computed completion: leaf -> node.done; branch -> all children complete
-function isComplete(node){
-  if (isLeaf(node)) return node.done;
-  return node.children.length > 0 && node.children.every(isComplete);
-}
-
-function anyChildStarted(node){
-  if (isLeaf(node)) return false;
-  return node.children.some(c => isComplete(c) || (!isLeaf(c) && anyChildStarted(c)));
-}
-
-function findNode(id, list=goals){
-  for(const n of list){
-    if(n.id===id) return n;
-    const found = findNode(id, n.children);
-    if(found) return found;
-  }
-  return null;
-}
-function findParentList(id, list=goals){
-  for(const n of list){
-    if(n.children.some(c=>c.id===id)) return n.children;
-    const found = findParentList(id, n.children);
-    if(found) return found;
-  }
-  return null;
-}
-
-function toggleLeaf(id){
-  const n = findNode(id);
-  if(n && isLeaf(n)){
-    n.done = !n.done;
-    render();
-  }
-}
-
-function addChild(parentId){
-  const input = document.getElementById('add-input-'+parentId);
-  if(!input) return;
-  const val = input.value.trim();
-  if(!val) return;
-  const parent = findNode(parentId);
-  parent.children.push({id: uid(), title: val, done:false, children:[]});
+function setTarget(){
+  const v = parseFloat(document.getElementById('targetInput').value);
+  if(!v || v<=0) return;
+  target = v;
   render();
 }
 
-function addGoal(){
-  const input = document.getElementById('newGoalInput');
-  const val = input.value.trim();
-  if(!val) return;
-  goals.push({id: uid(), title: val, done:false, children:[]});
-  input.value='';
+function addPayment(){
+  const amtInput = document.getElementById('payAmount');
+  const noteInput = document.getElementById('payNote');
+  const offPlan = document.getElementById('offPlanCheck').checked;
+  const amt = parseFloat(amtInput.value);
+  if(!amt || amt<=0) return;
+  payments.push({amount:amt, note: noteInput.value.trim(), offPlan});
+  if(!offPlan) saved += amt;
+  amtInput.value=''; noteInput.value=''; document.getElementById('offPlanCheck').checked=false;
   render();
 }
 
-function deleteNode(id){
-  if(goals.some(g=>g.id===id)){
-    goals = goals.filter(g=>g.id!==id);
+function render(){
+  document.getElementById('targetInput').value = target;
+  document.getElementById('savedAmt').textContent = saved.toLocaleString('ru-RU');
+  document.getElementById('targetAmt').textContent = target.toLocaleString('ru-RU');
+  const pct = Math.min(100, Math.round((saved/target)*100));
+  document.getElementById('pctBadge').textContent = pct + '%';
+
+  const filledCells = Math.round((Math.min(saved,target)/target)*CELLS);
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  for(let i=0;i<CELLS;i++){
+    const d = document.createElement('div');
+    d.className = 'cell' + (i<filledCells ? ' filled' : '');
+    grid.appendChild(d);
+  }
+
+  document.getElementById('goalBanner').classList.toggle('show', saved>=target);
+
+  const list = document.getElementById('historyList');
+  if(payments.length===0){
+    list.innerHTML = '<div class="empty">Пока нет платежей — внеси первый выше.</div>';
   } else {
-    const parentList = findParentList(id);
-    if(parentList){
-      const idx = parentList.findIndex(c=>c.id===id);
-      parentList.splice(idx,1);
-    }
+    list.innerHTML = payments.slice().reverse().map(p => `
+      <div class="payment-item ${p.offPlan?'off-plan':''}">
+        <div class="amt">${p.offPlan?'−':'+'}${p.amount.toLocaleString('ru-RU')} грн</div>
+        <div class="note">${escapeHtml(p.note||'')}</div>
+        ${p.offPlan?'<div class="tag">не по плану</div>':''}
+      </div>
+    `).join('');
   }
-  render();
-}
-
-let openAddFor = new Set();
-function toggleAddRow(id){
-  if(openAddFor.has(id)) openAddFor.delete(id); else openAddFor.add(id);
-  render();
-}
-
-// --- Render tree ---
-function renderNode(node, depth){
-  const complete = isComplete(node);
-  const leaf = isLeaf(node);
-  const rowClass = leaf ? (complete ? 'leaf-done' : '') : (complete ? 'branch-complete' : '');
-  const checkClass = leaf ? (complete ? 'checked' : '') : 'disabled';
-  const checkContent = complete ? '✓' : (leaf ? '' : '');
-
-  let html = `<div class="node">`;
-  html += `<div class="node-row ${rowClass}">`;
-  html += `<div class="node-check ${checkClass}" onclick="${leaf ? `toggleLeaf('${node.id}')` : ''}">${checkContent}</div>`;
-  html += `<div class="node-title ${complete?'done':''}">${escapeHtml(node.title)}</div>`;
-  if(!leaf){
-    html += `<div class="node-badge">${node.children.filter(isComplete).length}/${node.children.length}</div>`;
-  }
-  html += `<button class="add-child-btn" title="Добавить подзадачу" onclick="toggleAddRow('${node.id}')">+</button>`;
-  html += `<button class="del-btn" title="Удалить" onclick="deleteNode('${node.id}')">✕</button>`;
-  html += `</div>`;
-
-  if(openAddFor.has(node.id)){
-    html += `<div class="add-inline">
-      <input id="add-input-${node.id}" placeholder="Название подзадачи" onkeydown="if(event.key==='Enter'){addChild('${node.id}')}" />
-      <button onclick="addChild('${node.id}')">Добавить</button>
-    </div>`;
-  }
-
-  if(node.children.length>0){
-    html += `<div class="children">`;
-    node.children.forEach(c => html += renderNode(c, depth+1));
-    html += `</div>`;
-  }
-  html += `</div>`;
-  return html;
-}
-
-function renderTree(){
-  const el = document.getElementById('tree');
-  if(goals.length===0){
-    el.innerHTML = `<div class="empty-note">Пока нет ни одной цели. Добавь первую ниже.</div>`;
-    return;
-  }
-  el.innerHTML = goals.map(g => renderNode(g,0)).join('');
-}
-
-// --- Render merge board ---
-// Board shows tiers bottom-up: leaves at bottom row, then each merge level up to the goal.
-const ICONS_LEAF = ['🧵','🪡','🔘','📎','✂️'];
-const ICONS_BRANCH = ['🧶','🎀'];
-const ICON_FINISH = '👗';
-
-function collectByDepthFromLeaves(node){
-  // returns array of arrays: level 0 = leaves under this node's subtree grouped, etc.
-  // simplified: we just render node itself with a spool state, recursively, deepest first visually via CSS order
-  return node;
-}
-
-function renderBoardNode(node, isRoot){
-  const complete = isComplete(node);
-  const leaf = isLeaf(node);
-  const started = leaf ? false : node.children.some(c => isComplete(c) || (!isLeaf(c)));
-  let stateClass = 'locked';
-  if(complete) stateClass = 'merged';
-  else if(leaf) stateClass = node.done ? 'merged' : 'locked';
-  else if(node.children.some(isComplete)) stateClass = 'progress';
-
-  const icon = leaf ? ICONS_LEAF[Math.abs(hash(node.id))%ICONS_LEAF.length] : (isRoot ? '' : ICONS_BRANCH[Math.abs(hash(node.id))%ICONS_BRANCH.length]);
-
-  if(isRoot){
-    return `<div class="finish-line">
-      <div class="finish-garment ${complete?'done':''}">${complete ? ICON_FINISH : '🪢'}</div>
-      <div class="finish-text ${complete?'done':''}">${complete ? 'Готово: ' + escapeHtml(node.title) : escapeHtml(node.title)}</div>
-    </div>`;
-  }
-
-  return `<div class="spool ${stateClass}">${icon}<div class="spool-label">${escapeHtml(node.title)}</div></div>`;
-}
-
-function hash(str){
-  let h=0;
-  for(let i=0;i<str.length;i++){ h = (h<<5)-h+str.charCodeAt(i); h|=0; }
-  return h;
-}
-
-function flattenLevel(node, level, acc){
-  if(!acc[level]) acc[level]=[];
-  if(isLeaf(node)){
-    acc[level].push(node);
-  } else {
-    node.children.forEach(c => flattenLevel(c, level+1, acc));
-    acc[level] = acc[level] || [];
-    // place branch node itself one level up from its deepest child - simplified: put branch at level 0 always handled by caller
-  }
-}
-
-function renderBoard(){
-  const el = document.getElementById('board');
-  if(goals.length===0){
-    el.innerHTML = `<div class="empty-note">Доска пуста — добавь цель слева.</div>`;
-    return;
-  }
-  let html = `<div class="board">`;
-  goals.forEach(goal => {
-    // bottom row: all leaves across whole tree
-    const leaves = [];
-    (function collect(n){ if(isLeaf(n)) leaves.push(n); else n.children.forEach(collect); })(goal);
-    html += `<div class="tier-row" style="margin-bottom:22px;">`;
-    leaves.forEach(l => html += renderBoardNode(l,false));
-    html += `</div>`;
-
-    // middle row: direct branch children of the goal (if any are branches)
-    const branchChildren = goal.children.filter(c => !isLeaf(c));
-    if(branchChildren.length){
-      html += `<div class="tier-row" style="margin-bottom:22px;">`;
-      branchChildren.forEach(b => html += renderBoardNode(b,false));
-      html += `</div>`;
-    }
-
-    html += renderBoardNode(goal, true);
-  });
-  html += `</div>`;
-  el.innerHTML = html;
 }
 
 function escapeHtml(s){
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
-
-function render(){
-  renderTree();
-  renderBoard();
-}
-
-document.getElementById('newGoalInput').addEventListener('keydown', e=>{
-  if(e.key==='Enter') addGoal();
-});
 
 render();
 </script>
