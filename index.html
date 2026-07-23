@@ -288,6 +288,23 @@
     box-shadow:0 6px 0 rgba(0,0,0,0.14), 0 8px 16px rgba(0,0,0,0.2);
     border-top:6px solid var(--cat-color, var(--sky-deep));
   }
+  .card-controls{
+    display:flex;
+    justify-content:flex-end;
+    gap:4px;
+    margin-bottom:2px;
+  }
+  .ctrl-btn{
+    border:none;
+    background:rgba(0,0,0,0.05);
+    color:#8a7264;
+    width:20px; height:20px;
+    border-radius:6px;
+    font-size:11px;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .ctrl-btn:hover{background:rgba(0,0,0,0.1); color:#3a3226;}
   .order-card .name{font-family:'Baloo 2',cursive; font-size:15px; line-height:1.15; margin-bottom:4px;}
   .order-card .purpose{font-size:11.5px; color:#7a7264; font-weight:600; margin-bottom:8px; min-height:14px;}
   .order-card .sum{font-size:15px; font-weight:800; color:var(--sky-deep);}
@@ -540,7 +557,7 @@
 
 <div class="overlay" id="overlay">
   <div class="modal">
-    <h2>Новый заказ</h2>
+    <h2 id="modalTitle">Новый заказ</h2>
     <div class="field">
       <label>Название заказа</label>
       <input id="fName" placeholder="Например: платье для Полины">
@@ -696,6 +713,8 @@ const CAT_COLORS = {
   'Ну очень надо':'#FFC93C'
 };
 
+let editingOrderId = null;
+
 function openModal(){
   const sel = document.getElementById('fDebtLink');
   if(debts.length === 0){
@@ -703,8 +722,42 @@ function openModal(){
   } else {
     sel.innerHTML = debts.map(d => `<option value="${d.id}">${escapeHtml(d.name)} (${d.sum.toLocaleString('ru-RU')} грн)</option>`).join('');
   }
+  document.getElementById('modalTitle').textContent = 'Новый заказ';
   document.getElementById('overlay').classList.add('show');
 }
+
+function editOrder(id){
+  const o = orders.find(x => x.id === id);
+  if(!o) return;
+  editingOrderId = id;
+
+  const sel = document.getElementById('fDebtLink');
+  if(debts.length === 0){
+    sel.innerHTML = '<option value="">Нет добавленных долгов</option>';
+  } else {
+    sel.innerHTML = debts.map(d => `<option value="${d.id}">${escapeHtml(d.name)} (${d.sum.toLocaleString('ru-RU')} грн)</option>`).join('');
+  }
+
+  document.getElementById('fName').value = o.name;
+  document.getElementById('fPurpose').value = o.purpose;
+  document.getElementById('fSum').value = o.sum;
+  document.getElementById('fCategory').value = o.category;
+  document.getElementById('fDate').value = o.dueDate || '';
+  document.getElementById('fRecurring').checked = !!o.recurring;
+  document.getElementById('fIsDebt').checked = !!o.debtId;
+  toggleDebtSelect();
+  if(o.debtId) sel.value = o.debtId;
+  document.getElementById('fDebtPrincipal').value = o.debtPrincipal || '';
+
+  document.getElementById('modalTitle').textContent = 'Изменить заказ';
+  document.getElementById('overlay').classList.add('show');
+}
+
+function deleteOrderDraft(id){
+  orders = orders.filter(o => o.id !== id);
+  renderOrders();
+}
+
 function toggleDebtSelect(){
   const checked = document.getElementById('fIsDebt').checked;
   document.getElementById('debtSelectField').style.display = checked ? 'flex' : 'none';
@@ -718,6 +771,7 @@ function closeModal(){
   document.getElementById('debtSelectField').style.display = 'none';
   document.getElementById('debtPrincipalField').style.display = 'none';
   document.getElementById('formError').style.display = 'none';
+  editingOrderId = null;
 }
 
 function saveOrder(){
@@ -753,7 +807,15 @@ function saveOrder(){
   }
   errEl.style.display = 'none';
   const recurring = document.getElementById('fRecurring').checked;
-  orders.push({id:idCounter++, name, purpose, sum, category, dueDate: dueDate || null, debtId: debtId || null, debtPrincipal: debtPrincipal || null, recurring});
+
+  if(editingOrderId){
+    const o = orders.find(x => x.id === editingOrderId);
+    if(o){
+      Object.assign(o, {name, purpose, sum, category, dueDate: dueDate || null, debtId: debtId || null, debtPrincipal: debtPrincipal || null, recurring});
+    }
+  } else {
+    orders.push({id:idCounter++, name, purpose, sum, category, dueDate: dueDate || null, debtId: debtId || null, debtPrincipal: debtPrincipal || null, recurring});
+  }
   closeModal();
   renderOrders();
 }
@@ -1000,6 +1062,10 @@ function renderOrders(){
       : '';
     return `
     <div class="order-card" style="--cat-color:${CAT_COLORS[o.category]||'#1E8FC4'}">
+      <div class="card-controls">
+        <button class="ctrl-btn" onclick="editOrder(${o.id})" title="Изменить">✎</button>
+        <button class="ctrl-btn" onclick="deleteOrderDraft(${o.id})" title="Удалить">✕</button>
+      </div>
       <div class="name">${escapeHtml(o.name)}</div>
       <div class="purpose">${escapeHtml(o.purpose)}</div>
       <div class="sum">${o.sum.toLocaleString('ru-RU')} грн</div>
