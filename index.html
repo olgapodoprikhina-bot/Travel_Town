@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Закрыть кредит</title>
+<title>Заказы</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap');
 
@@ -15,6 +15,8 @@
     --grape:#8E6ADB;
     --cream:#FFF8EC;
     --ink:#1F3A4D;
+    --board-a:#E4D9F5;
+    --board-b:#D6C5EC;
   }
   *{box-sizing:border-box;}
   body{
@@ -22,47 +24,91 @@
     min-height:100vh;
     font-family:'Nunito',sans-serif;
     background:
-      radial-gradient(circle at 15% 10%, #7FD4F0 0%, transparent 45%),
-      radial-gradient(circle at 90% 85%, #FFE38A 0%, transparent 40%),
+      radial-gradient(circle at 15% 8%, #7FD4F0 0%, transparent 45%),
+      radial-gradient(circle at 90% 90%, #FFE38A 0%, transparent 40%),
       linear-gradient(160deg,var(--sky) 0%, var(--sky-deep) 100%);
     color:var(--ink);
-    padding:20px 14px 60px;
+    padding:18px 12px 60px;
   }
   h1,h2{font-family:'Baloo 2',cursive; margin:0;}
-  .wrap{max-width:640px; margin:0 auto;}
+  .wrap{max-width:900px; margin:0 auto;}
+
+  .layout{
+    display:grid;
+    grid-template-columns:220px 1fr;
+    gap:16px;
+    align-items:start;
+  }
+  @media(max-width:680px){ .layout{grid-template-columns:1fr;} }
+
+  .sources-card{
+    background:var(--cream);
+    border-radius:20px;
+    padding:16px;
+    box-shadow:0 8px 0 rgba(0,0,0,0.12), 0 10px 20px rgba(0,0,0,0.22);
+  }
+  .sources-card h2{font-size:15px; margin-bottom:10px;}
+  .source-item{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    background:#fff;
+    border-radius:14px;
+    padding:10px 10px 10px;
+    margin-bottom:10px;
+    font-size:12.5px;
+    font-weight:700;
+    border-top:5px solid var(--grape);
+    box-shadow:0 4px 0 rgba(0,0,0,0.1);
+  }
+  .source-item .top-row{
+    display:flex; justify-content:space-between; align-items:flex-start;
+  }
+  .source-item .name{line-height:1.2;}
+  .source-item .tier-ref{
+    font-size:11px;
+    color:#7a7264;
+    font-weight:600;
+    line-height:1.5;
+  }
+  .source-item .tier-ref small{font-size:9.5px; color:#a89a83;}
+  .source-add-row{
+    display:flex; gap:6px;
+  }
+  .source-add-row input{
+    flex:1;
+    min-width:0;
+    border:2px solid #E9DCC0;
+    border-radius:10px;
+    padding:7px 9px;
+    font-family:'Nunito',sans-serif;
+    font-size:12.5px;
+    font-weight:700;
+  }
+  .source-add-row button{
+    border:none;
+    background:var(--grape);
+    color:#fff;
+    border-radius:10px;
+    padding:7px 10px;
+    font-weight:800;
+    cursor:pointer;
+    font-size:12px;
+    white-space:nowrap;
+  }
 
   .header{
-    text-align:center;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
     color:#fff;
-    margin-bottom:18px;
+    margin-bottom:14px;
+    flex-wrap:wrap;
+    gap:10px;
   }
-  .header h1{
-    font-size:28px;
-    text-shadow:0 3px 0 rgba(0,0,0,0.15);
-  }
-  .header p{margin:4px 0 0; font-size:13.5px; opacity:0.9; font-weight:700;}
+  .header h1{font-size:24px; text-shadow:0 3px 0 rgba(0,0,0,0.15);}
 
-  .card{
-    background:var(--cream);
-    border-radius:22px;
-    padding:20px;
-    box-shadow:0 10px 0 rgba(0,0,0,0.12), 0 14px 26px rgba(0,0,0,0.25);
-    margin-bottom:18px;
-  }
-
-  .setup-row{display:flex; gap:10px; flex-wrap:wrap; align-items:end;}
-  .field{display:flex; flex-direction:column; gap:4px; flex:1; min-width:140px;}
-  .field label{font-size:12px; font-weight:800; color:#6b5a3f;}
-  .field input{
-    border:3px solid #E9DCC0;
-    border-radius:14px;
-    padding:9px 12px;
-    font-family:'Nunito',sans-serif;
-    font-weight:700;
-    font-size:16px;
-    background:#fff;
-  }
-  .btn{
+  .add-btn{
     border:none;
     border-radius:14px;
     padding:11px 18px;
@@ -70,223 +116,585 @@
     font-size:14px;
     cursor:pointer;
     color:#fff;
-    box-shadow:0 4px 0 rgba(0,0,0,0.18);
+    background:var(--coral);
+    box-shadow:0 4px 0 rgba(0,0,0,0.2);
   }
-  .btn:active{transform:translateY(2px); box-shadow:0 2px 0 rgba(0,0,0,0.18);}
-  .btn-sky{background:var(--sky-deep);}
-  .btn-coral{background:var(--coral);}
-  .btn-leaf{background:var(--leaf);}
+  .add-btn:active{transform:translateY(2px); box-shadow:0 2px 0 rgba(0,0,0,0.2);}
 
-  .progress-head{
+  /* --- Orders strip --- */
+  .orders-strip{
+    display:flex;
+    gap:10px;
+    overflow-x:auto;
+    padding:6px 2px 14px;
+    margin-bottom:6px;
+  }
+  .order-card{
+    flex:0 0 auto;
+    width:150px;
+    background:var(--cream);
+    border-radius:16px;
+    padding:12px 12px 10px;
+    box-shadow:0 6px 0 rgba(0,0,0,0.14), 0 8px 16px rgba(0,0,0,0.2);
+    border-top:6px solid var(--cat-color, var(--sky-deep));
+  }
+  .order-card .name{font-family:'Baloo 2',cursive; font-size:15px; line-height:1.15; margin-bottom:4px;}
+  .order-card .purpose{font-size:11.5px; color:#7a7264; font-weight:600; margin-bottom:8px; min-height:14px;}
+  .order-card .sum{font-size:15px; font-weight:800; color:var(--sky-deep);}
+  .order-card .cat{
+    display:inline-block;
+    margin-top:6px;
+    font-size:10px;
+    font-weight:800;
+    padding:3px 9px;
+    border-radius:20px;
+    background:var(--cat-color, var(--sky-deep));
+    color:#fff;
+  }
+  .order-card .pay-btn{
+    display:block;
+    width:100%;
+    margin-top:8px;
+    border:none;
+    background:var(--leaf);
+    color:#fff;
+    font-weight:800;
+    font-size:11.5px;
+    padding:6px 0;
+    border-radius:10px;
+    cursor:pointer;
+  }
+  .order-card .pay-btn:active{transform:translateY(1px);}
+  .archive-toggle{
+    color:#fff;
+    font-size:12px;
+    font-weight:800;
+    opacity:0.85;
+    cursor:pointer;
+    padding:0 4px 8px;
+    text-decoration:underline;
+    display:inline-block;
+  }
+  .archive-list{
+    display:none;
+    background:rgba(255,255,255,0.92);
+    border-radius:14px;
+    padding:10px 12px;
+    margin:0 2px 12px;
+    font-size:12.5px;
+  }
+  .archive-list.show{display:block;}
+  .archive-item{
+    display:flex; justify-content:space-between;
+    padding:5px 0;
+    border-bottom:1px solid #eee2cc;
+  }
+  .archive-item:last-child{border-bottom:none;}
+
+  .empty-orders{
+    color:#fff;
+    font-weight:700;
+    font-size:13px;
+    opacity:0.85;
+    padding:8px 4px 16px;
+  }
+
+  /* --- Board --- */
+  .board-card{
+    background:var(--cream);
+    border-radius:22px;
+    padding:14px;
+    box-shadow:0 10px 0 rgba(0,0,0,0.12), 0 14px 26px rgba(0,0,0,0.25);
+  }
+  .board-head{
     display:flex;
     justify-content:space-between;
     align-items:center;
     margin-bottom:10px;
+    padding:0 2px;
   }
-  .progress-head .amounts{font-family:'Baloo 2',cursive; font-size:19px; color:var(--sky-deep);}
-  .progress-head .pct{
+  .board-head h2{font-size:15px;}
+  .sum-counter{
     background:var(--sun);
     color:#7A5300;
     font-weight:800;
     font-size:13px;
-    padding:4px 12px;
+    padding:5px 13px;
     border-radius:20px;
   }
-
-  .grid{
+  .board{
     display:grid;
-    grid-template-columns:repeat(10, 1fr);
-    gap:6px;
-    margin:10px 0 4px;
-  }
-  .cell{
-    aspect-ratio:1;
-    border-radius:8px;
-    background:#EDE4CD;
-    border:2px solid rgba(0,0,0,0.05);
-    transition:all .35s cubic-bezier(.34,1.56,.64,1);
-  }
-  .cell.filled{
-    background:linear-gradient(155deg,#FFD873,var(--sun));
-    box-shadow:0 0 0 2px rgba(255,201,60,0.4), inset 0 -3px 4px rgba(0,0,0,0.12), inset 0 2px 3px rgba(255,255,255,0.5);
-    animation:cellpop .4s ease;
-  }
-  @keyframes cellpop{
-    0%{transform:scale(0.3); opacity:0;}
-    70%{transform:scale(1.2);}
-    100%{transform:scale(1);}
-  }
-
-  .goal-banner{
-    text-align:center;
-    padding:10px;
+    grid-template-columns:repeat(7, 1fr);
+    grid-template-rows:repeat(8, 1fr);
+    gap:0;
     border-radius:14px;
-    background:linear-gradient(120deg,var(--leaf),#3FA85C);
-    color:#fff;
-    font-family:'Baloo 2',cursive;
-    font-size:16px;
-    margin-top:10px;
-    display:none;
-    box-shadow:0 4px 0 rgba(0,0,0,0.15);
+    overflow:hidden;
+    aspect-ratio:7/8;
   }
-  .goal-banner.show{display:block; animation:cellpop .5s ease;}
-
-  .payment-form{
-    display:flex;
-    gap:8px;
-    flex-wrap:wrap;
-    margin-top:14px;
-    padding-top:14px;
-    border-top:2px dashed #E9DCC0;
-  }
-  .payment-form input{
-    border:2px solid #E9DCC0;
-    border-radius:12px;
-    padding:8px 11px;
-    font-family:'Nunito',sans-serif;
-    font-size:13.5px;
-    font-weight:600;
-  }
-  .payment-form input.amount{width:110px; font-weight:800;}
-  .payment-form input.note{flex:1; min-width:150px;}
-
-  .off-plan-toggle{
-    display:flex;
-    align-items:center;
-    gap:6px;
-    font-size:12.5px;
-    font-weight:700;
-    color:#8a5a3f;
-    margin-top:8px;
+  .board-cell{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    font-size:20px;
     cursor:pointer;
-    user-select:none;
+    transition:box-shadow .15s ease;
+    gap:1px;
   }
-  .off-plan-toggle input{transform:scale(1.1);}
+  .board-cell .cell-value{
+    font-size:8px;
+    font-weight:800;
+    color:#4a3d63;
+    opacity:0.75;
+  }
+  .board-cell.selected{
+    box-shadow:inset 0 0 0 3px var(--coral);
+  }
+  .board-cell.a{background:var(--board-a);}
+  .board-cell.b{background:var(--board-b);}
 
-  .history{margin-top:6px;}
-  .history h2{font-size:15px; margin-bottom:8px;}
-  .payment-item{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    padding:8px 10px;
-    border-radius:12px;
-    background:#fff;
-    margin-bottom:6px;
-    font-size:13px;
-    border-left:5px solid var(--leaf);
+  /* --- Modal --- */
+  .overlay{
+    position:fixed; inset:0;
+    background:rgba(20,30,40,0.45);
+    display:none;
+    align-items:center; justify-content:center;
+    padding:16px;
+    z-index:10;
   }
-  .payment-item.off-plan{border-left-color:var(--coral);}
-  .payment-item .amt{font-weight:800; color:var(--sky-deep);}
-  .payment-item .note{color:#6b6255; font-weight:600; flex:1; margin:0 8px;}
-  .payment-item .tag{font-size:10.5px; font-weight:800; color:var(--coral);}
-  .empty{font-size:13px; color:#8a8272; text-align:center; padding:10px;}
+  .overlay.show{display:flex;}
+  .modal{
+    background:var(--cream);
+    border-radius:20px;
+    padding:22px;
+    width:100%;
+    max-width:380px;
+    box-shadow:0 16px 40px rgba(0,0,0,0.35);
+  }
+  .modal h2{font-size:19px; margin-bottom:14px;}
+  .field{display:flex; flex-direction:column; gap:4px; margin-bottom:12px;}
+  .field label{font-size:12px; font-weight:800; color:#6b5a3f;}
+  .field input, .field select{
+    border:3px solid #E9DCC0;
+    border-radius:12px;
+    padding:9px 11px;
+    font-family:'Nunito',sans-serif;
+    font-weight:700;
+    font-size:14.5px;
+    background:#fff;
+  }
+  .modal-actions{
+    display:flex; gap:8px; margin-top:16px;
+  }
+  .modal-actions button{
+    flex:1;
+    border:none;
+    border-radius:12px;
+    padding:10px;
+    font-weight:800;
+    font-size:13.5px;
+    cursor:pointer;
+  }
+  .btn-cancel{background:#E9DCC0; color:#6b5a3f;}
+  .btn-save{background:var(--leaf); color:#fff;}
+
+  .icon-choice{
+    width:64px; height:64px;
+    border-radius:14px;
+    border:3px solid #E9DCC0;
+    background:#fff;
+    font-size:28px;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+  }
+  .icon-choice:hover{border-color:var(--leaf); background:#F2FBF3;}
+  .icon-choice:active{transform:translateY(2px);}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="header">
-    <h1>🪙 Закрыть кредит</h1>
-    <p>каждый платёж закрашивает ячейку</p>
+    <h1>🧵 Мои заказы</h1>
+    <button class="add-btn" onclick="openModal()">+ Добавить заказ</button>
   </div>
 
-  <div class="card">
-    <div class="setup-row" id="setupRow">
-      <div class="field">
-        <label>Сумма долга, грн</label>
-        <input type="number" id="targetInput" placeholder="8000" value="8000">
+  <div class="layout">
+    <div class="sources-card">
+      <h2>💰 Источники дохода</h2>
+      <div id="sourcesList"></div>
+    </div>
+
+    <div>
+  <div id="ordersStrip" class="orders-strip"></div>
+  <div class="archive-toggle" onclick="toggleArchive()" id="archiveToggle">Архив (0)</div>
+  <div class="archive-list" id="archiveList"></div>
+
+      <div class="board-card">
+        <div class="board-head">
+          <h2>🎯 Доска</h2>
+          <div class="sum-counter">💰 <span id="totalSumDisplay">0</span> грн</div>
+        </div>
+        <div class="board" id="board"></div>
       </div>
-      <button class="btn btn-sky" onclick="setTarget()">Задать цель</button>
     </div>
   </div>
+</div>
 
-  <div class="card">
-    <div class="progress-head">
-      <div class="amounts"><span id="savedAmt">0</span> / <span id="targetAmt">8000</span> грн</div>
-      <div class="pct" id="pctBadge">0%</div>
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2>Новый заказ</h2>
+    <div class="field">
+      <label>Название заказа</label>
+      <input id="fName" placeholder="Например: платье для Полины">
     </div>
-    <div class="grid" id="grid"></div>
-    <div class="goal-banner" id="goalBanner">🎉 Кредит закрыт!</div>
-
-    <div class="payment-form">
-      <input class="amount" type="number" id="payAmount" placeholder="Сумма">
-      <input class="note" type="text" id="payNote" placeholder="За что / откуда (необязательно)">
-      <button class="btn btn-leaf" onclick="addPayment(false)">+ Внести платёж</button>
+    <div class="field">
+      <label>Для чего</label>
+      <input id="fPurpose" placeholder="Например: соревнования в сентябре">
     </div>
-    <label class="off-plan-toggle">
-      <input type="checkbox" id="offPlanCheck">
-      это незапланированная трата в сторону — просто хочу отметить
-    </label>
+    <div class="field">
+      <label>Сумма, грн</label>
+      <input id="fSum" type="text" inputmode="decimal" placeholder="3500">
+    </div>
+    <div class="field">
+      <label>Категория</label>
+      <select id="fCategory">
+        <option value="Константа">Константа (кредит, коммуналка)</option>
+        <option value="Прожиточный минимум">Прожиточный минимум (еда)</option>
+        <option value="Непредвиденные расходы">Непредвиденные расходы</option>
+        <option value="Ну очень надо">Ну очень надо</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button class="btn-save" onclick="saveOrder()">Добавить</button>
+    </div>
+    <div id="formError" style="color:#B5483D; font-size:12px; font-weight:700; margin-top:8px; display:none;"></div>
   </div>
+</div>
 
-  <div class="card history">
-    <h2>История</h2>
-    <div id="historyList"></div>
+<div class="overlay" id="payOverlay">
+  <div class="modal">
+    <h2 id="payOrderName">Оплатить заказ</h2>
+    <div style="font-size:12.5px; color:#7a7264; font-weight:700; margin-bottom:12px;">Выбери, чем оплачиваешь</div>
+    <div id="payIconGrid" style="display:flex; gap:10px; justify-content:center; margin-bottom:6px;"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closePayModal()">Отмена</button>
+    </div>
   </div>
 </div>
 
 <script>
-let target = 8000;
-let saved = 0;
-let payments = []; // {amount, note, offPlan}
-const CELLS = 40;
+let orders = [];
+let archivedOrders = [];
+let idCounter = 1;
 
-function setTarget(){
-  const v = parseFloat(document.getElementById('targetInput').value);
-  if(!v || v<=0) return;
-  target = v;
-  render();
+const ORDER_ICONS = {
+  'Константа': ['📄','🧾','🏦'],
+  'Прожиточный минимум': ['🥕','🍞','🛒'],
+  'Непредвиденные расходы': ['⚡','🔧','🚨'],
+  'Ну очень надо': ['💝','🎁','💎']
+};
+let sources = [
+  {id:'s1', name:'Пошив костюмов', category:'Пошив костюмов', clicks:0},
+  {id:'s2', name:'От Провидения', category:'От Провидения', clicks:0}
+];
+let sourceIdCounter = 3;
+
+const SOURCE_ICONS = {
+  'Пошив костюмов': ['🪡','🧵','✂️'],
+  'От Провидения': ['🍬','🍭','🍰']
+};
+
+function tierForAmount(amt){
+  if(amt <= 500) return 0;
+  if(amt <= 1000) return 1;
+  return 2;
 }
 
-function addPayment(){
-  const amtInput = document.getElementById('payAmount');
-  const noteInput = document.getElementById('payNote');
-  const offPlan = document.getElementById('offPlanCheck').checked;
-  const amt = parseFloat(amtInput.value);
-  if(!amt || amt<=0) return;
-  payments.push({amount:amt, note: noteInput.value.trim(), offPlan});
-  if(!offPlan) saved += amt;
-  amtInput.value=''; noteInput.value=''; document.getElementById('offPlanCheck').checked=false;
-  render();
+function tierIcon(category, value){
+  const icons = SOURCE_ICONS[category] || ORDER_ICONS[category] || ['⭐','🌟','✨'];
+  return icons[tierForAmount(value)];
 }
 
-function render(){
-  document.getElementById('targetInput').value = target;
-  document.getElementById('savedAmt').textContent = saved.toLocaleString('ru-RU');
-  document.getElementById('targetAmt').textContent = target.toLocaleString('ru-RU');
-  const pct = Math.min(100, Math.round((saved/target)*100));
-  document.getElementById('pctBadge').textContent = pct + '%';
+const BOARD_COLS = 7, BOARD_ROWS = 8;
+// each cell is null or {icon, category, value}
+let boardCells = new Array(BOARD_COLS*BOARD_ROWS).fill(null);
+let selectedCellIdx = null;
+let totalSum = 0;
 
-  const filledCells = Math.round((Math.min(saved,target)/target)*CELLS);
-  const grid = document.getElementById('grid');
-  grid.innerHTML = '';
-  for(let i=0;i<CELLS;i++){
-    const d = document.createElement('div');
-    d.className = 'cell' + (i<filledCells ? ' filled' : '');
-    grid.appendChild(d);
+// merge rule: any two tier-1 icons (needle/candy) combine into a gold coin (final form, no further tiers)
+const MERGE_RESULT = {
+  '🪡|🍬': '🪙',
+  '🍬|🪡': '🪙',
+  '🪡|🪡': '🪙',
+  '🍬|🍬': '🪙'
+};
+
+const CAT_COLORS = {
+  'Константа':'#1E8FC4',
+  'Прожиточный минимум':'#5FCB7A',
+  'Непредвиденные расходы':'#FF6F61',
+  'Ну очень надо':'#FFC93C'
+};
+
+function openModal(){
+  document.getElementById('overlay').classList.add('show');
+}
+function closeModal(){
+  document.getElementById('overlay').classList.remove('show');
+  ['fName','fPurpose','fSum'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('formError').style.display = 'none';
+}
+
+function saveOrder(){
+  const name = document.getElementById('fName').value.trim();
+  const purpose = document.getElementById('fPurpose').value.trim();
+  const sum = parseFloat(document.getElementById('fSum').value.replace(',', '.'));
+  const category = document.getElementById('fCategory').value;
+  const errEl = document.getElementById('formError');
+
+  if(!name || !sum || sum<=0){
+    errEl.textContent = !name ? 'Впиши название заказа' : 'Впиши корректную сумму';
+    errEl.style.display = 'block';
+    return;
   }
+  errEl.style.display = 'none';
+  orders.push({id:idCounter++, name, purpose, sum, category});
+  closeModal();
+  renderOrders();
+}
 
-  document.getElementById('goalBanner').classList.toggle('show', saved>=target);
+let payingOrderId = null;
 
-  const list = document.getElementById('historyList');
-  if(payments.length===0){
-    list.innerHTML = '<div class="empty">Пока нет платежей — внеси первый выше.</div>';
+function payOrder(id){
+  payingOrderId = id;
+  const order = orders.find(o => o.id === id);
+  if(!order) return;
+  document.getElementById('payOrderName').textContent = 'Оплатить: ' + order.name;
+
+  const grid = document.getElementById('payIconGrid');
+  const usableIndexes = boardCells
+    .map((c, i) => (c && c.value >= order.sum) ? i : null)
+    .filter(i => i !== null);
+
+  if(usableIndexes.length === 0){
+    const hasAny = boardCells.some(c => c !== null);
+    grid.innerHTML = hasAny
+      ? `<div style="font-size:12.5px; color:#8a7264;">Ни в одной иконке не хватает суммы (нужно ${order.sum.toLocaleString('ru-RU')} грн) — накопи ещё или объедини иконки слиянием.</div>`
+      : '<div style="font-size:12.5px; color:#8a7264;">На доске пока нет иконок для оплаты.</div>';
   } else {
-    list.innerHTML = payments.slice().reverse().map(p => `
-      <div class="payment-item ${p.offPlan?'off-plan':''}">
-        <div class="amt">${p.offPlan?'−':'+'}${p.amount.toLocaleString('ru-RU')} грн</div>
-        <div class="note">${escapeHtml(p.note||'')}</div>
-        ${p.offPlan?'<div class="tag">не по плану</div>':''}
+    grid.innerHTML = usableIndexes.map(i => `
+      <div class="icon-choice" onclick="confirmPay(${i})" style="flex-direction:column; gap:2px;">
+        <div>${boardCells[i].icon}</div>
+        <div style="font-size:9px; font-weight:800; color:#8a7264;">${boardCells[i].value.toLocaleString('ru-RU')}</div>
       </div>
     `).join('');
   }
+
+  document.getElementById('payOverlay').classList.add('show');
+}
+
+function closePayModal(){
+  document.getElementById('payOverlay').classList.remove('show');
+  payingOrderId = null;
+}
+
+function confirmPay(cellIdx){
+  const idx = orders.findIndex(o => o.id === payingOrderId);
+  if(idx === -1) return;
+  const order = orders[idx];
+  const item = boardCells[cellIdx];
+  if(!item) return;
+
+  orders.splice(idx,1);
+  archivedOrders.push(order);
+  totalSum -= order.sum;
+
+  const remaining = item.value - order.sum;
+  if(remaining <= 0){
+    boardCells[cellIdx] = null;
+  } else if(item.category === 'Монета'){
+    // coins don't have tiers — just reduce their value, icon stays
+    boardCells[cellIdx] = {icon:item.icon, category:item.category, value:remaining};
+  } else {
+    boardCells[cellIdx] = {icon: tierIcon(item.category, remaining), category:item.category, value:remaining};
+  }
+
+  closePayModal();
+  renderOrders();
+  renderArchive();
+  renderBoard();
+}
+
+function confirmPay(icon){
+  const idx = orders.findIndex(o => o.id === payingOrderId);
+  if(idx === -1) return;
+  const order = orders[idx];
+  orders.splice(idx,1);
+  archivedOrders.push(order);
+
+  totalSum -= order.sum;
+
+  const usedIdx = boardCells.findIndex(c => c === icon);
+  if(usedIdx !== -1){
+    boardCells[usedIdx] = null;
+  }
+
+  closePayModal();
+  renderOrders();
+  renderArchive();
+  renderBoard();
+}
+
+function toggleArchive(){
+  document.getElementById('archiveList').classList.toggle('show');
+}
+
+function renderArchive(){
+  document.getElementById('archiveToggle').textContent = `Архив (${archivedOrders.length})`;
+  const list = document.getElementById('archiveList');
+  if(archivedOrders.length === 0){
+    list.innerHTML = '<div style="color:#8a7264;">Пока пусто.</div>';
+    return;
+  }
+  list.innerHTML = archivedOrders.slice().reverse().map(o => `
+    <div class="archive-item">
+      <span>${escapeHtml(o.name)}</span>
+      <span>${o.sum.toLocaleString('ru-RU')} грн</span>
+    </div>
+  `).join('');
+}
+
+function addSource(){
+  const input = document.getElementById('fSourceName');
+  const name = input.value.trim();
+  const category = document.getElementById('fSourceCategory').value;
+  if(!name) return;
+  sources.push({id:'s'+(sourceIdCounter++), name, category, clicks:0});
+  input.value = '';
+  renderSources();
+}
+
+function deleteSource(id){
+  sources = sources.filter(s => s.id !== id);
+  renderSources();
+}
+
+function placeFromSource(id){
+  const s = sources.find(x => x.id === id);
+  if(!s) return;
+  const input = document.getElementById('amt-'+id);
+  const amt = parseFloat(input.value.replace(',', '.'));
+  if(!amt || amt <= 0) return;
+
+  const icon = tierIcon(s.category, amt);
+
+  const emptyIdx = boardCells.findIndex(c => c === null);
+  if(emptyIdx === -1){
+    input.value = '';
+    return; // board full
+  }
+  boardCells[emptyIdx] = {icon, category:s.category, value:amt};
+  totalSum += amt;
+  input.value = '';
+  renderBoard();
+}
+
+function handleCellClick(idx){
+  const item = boardCells[idx];
+  if(!item) return;
+
+  if(selectedCellIdx === null){
+    selectedCellIdx = idx;
+    renderBoard();
+    return;
+  }
+  if(selectedCellIdx === idx){
+    selectedCellIdx = null;
+    renderBoard();
+    return;
+  }
+
+  const a = boardCells[selectedCellIdx];
+  const b = boardCells[idx];
+  const key = a.icon + '|' + b.icon;
+  const resultIcon = MERGE_RESULT[key];
+
+  if(resultIcon){
+    boardCells[idx] = {icon: resultIcon, category:'Монета', value: a.value + b.value};
+    boardCells[selectedCellIdx] = null;
+    selectedCellIdx = null;
+  } else {
+    selectedCellIdx = idx;
+  }
+  renderBoard();
+}
+
+function renderSources(){
+  const list = document.getElementById('sourcesList');
+  if(sources.length === 0){
+    list.innerHTML = '<div class="empty-orders" style="color:#8a7264; padding:4px 0;">Пока нет источников.</div>';
+    return;
+  }
+  list.innerHTML = sources.map(s => {
+    const icons = SOURCE_ICONS[s.category] || ['⭐','🌟','✨'];
+    return `
+    <div class="source-item">
+      <div class="top-row">
+        <span class="name">${escapeHtml(s.name)}</span>
+      </div>
+      <div class="tier-ref">${icons[0]} <small>1–500</small> · ${icons[1]} <small>501–1000</small> · ${icons[2]} <small>1001+</small></div>
+      <div class="source-add-row">
+        <input id="amt-${s.id}" type="text" inputmode="decimal" placeholder="Сумма, грн" onkeydown="if(event.key==='Enter'){placeFromSource('${s.id}')}">
+        <button onclick="placeFromSource('${s.id}')">Добавить</button>
+      </div>
+    </div>
+  `;
+  }).join('');
+}
+
+function renderOrders(){
+  const strip = document.getElementById('ordersStrip');
+  if(orders.length === 0){
+    strip.innerHTML = '<div class="empty-orders">Пока нет заказов — нажми "Добавить заказ" выше.</div>';
+    return;
+  }
+  strip.innerHTML = orders.map(o => `
+    <div class="order-card" style="--cat-color:${CAT_COLORS[o.category]||'#1E8FC4'}">
+      <div class="name">${escapeHtml(o.name)}</div>
+      <div class="purpose">${escapeHtml(o.purpose)}</div>
+      <div class="sum">${o.sum.toLocaleString('ru-RU')} грн</div>
+      <div class="cat">${escapeHtml(o.category)}</div>
+      <button class="pay-btn" onclick="payOrder(${o.id})">✓ Оплатить</button>
+    </div>
+  `).join('');
+}
+
+function renderBoard(){
+  const board = document.getElementById('board');
+  let html = '';
+  for(let r=0;r<BOARD_ROWS;r++){
+    for(let c=0;c<BOARD_COLS;c++){
+      const idx = r*BOARD_COLS + c;
+      const shade = (r+c) % 2 === 0 ? 'a' : 'b';
+      const item = boardCells[idx];
+      const sel = idx === selectedCellIdx ? ' selected' : '';
+      const inner = item ? `<div>${item.icon}</div><div class="cell-value">${item.value.toLocaleString('ru-RU')}</div>` : '';
+      html += `<div class="board-cell ${shade}${sel}" onclick="handleCellClick(${idx})">${inner}</div>`;
+    }
+  }
+  board.innerHTML = html;
+  const sumEl = document.getElementById('totalSumDisplay');
+  sumEl.textContent = totalSum.toLocaleString('ru-RU');
+  document.querySelector('.sum-counter').style.background = totalSum < 0 ? 'var(--coral)' : 'var(--sun)';
+  document.querySelector('.sum-counter').style.color = totalSum < 0 ? '#fff' : '#7A5300';
 }
 
 function escapeHtml(s){
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-render();
+renderSources();
+renderOrders();
+renderArchive();
+renderBoard();
 </script>
 </body>
 </html>
