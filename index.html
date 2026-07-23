@@ -43,15 +43,36 @@
 
   .sources-card{
     background:var(--cream);
-    border-radius:20px;
-    padding:16px;
-    box-shadow:0 8px 0 rgba(0,0,0,0.12), 0 10px 20px rgba(0,0,0,0.22);
+    border-radius:16px;
+    padding:10px 14px;
+    box-shadow:0 6px 0 rgba(0,0,0,0.1), 0 8px 16px rgba(0,0,0,0.18);
   }
-  .sources-card h2{font-size:15px; margin-bottom:10px;}
+
+  /* --- Collapsible accordion sections --- */
+  .section-toggle{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    cursor:pointer;
+    font-size:13px;
+    font-weight:800;
+    color:#4a3d2e;
+    user-select:none;
+  }
+  .toggle-arrow{
+    font-size:11px;
+    color:#a89a83;
+    transition:transform .2s ease;
+  }
+  .section-toggle.open .toggle-arrow{transform:rotate(90deg);}
+  .section-content{
+    margin-top:8px;
+  }
+  .collapsed{display:none !important;}
 
   /* --- Debts: intentionally quiet/compact so a long list doesn't feel heavy --- */
   .debts-card{
-    margin-top:12px;
+    margin-top:8px;
     background:rgba(255,255,255,0.55);
     border-radius:16px;
     padding:10px 12px;
@@ -272,6 +293,43 @@
   }
 
   /* --- Orders strip --- */
+  .urgent-section{
+    margin-bottom:10px;
+  }
+  .urgent-title{
+    font-size:12.5px;
+    font-weight:800;
+    color:#fff;
+    text-shadow:0 2px 0 rgba(0,0,0,0.15);
+    margin-bottom:6px;
+  }
+  .cat-section{
+    background:rgba(255,255,255,0.55);
+    border-radius:14px;
+    padding:8px 12px;
+    margin-bottom:8px;
+  }
+  .cat-section-toggle{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    cursor:pointer;
+    user-select:none;
+  }
+  .cat-section-title{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:12.5px;
+    font-weight:800;
+    color:#2B2620;
+  }
+  .cat-dot{width:9px; height:9px; border-radius:50%; display:inline-block;}
+  .cat-section-meta{
+    font-size:10.5px;
+    font-weight:700;
+    color:#7a7264;
+  }
   .orders-strip{
     display:flex;
     flex-wrap:wrap;
@@ -522,26 +580,34 @@
   <div class="layout">
     <div>
       <div class="sources-card">
-        <h2>💰 Источники дохода</h2>
-        <div id="sourcesList"></div>
+        <div class="section-toggle" onclick="toggleSection('sources')">
+          <span>💰 Источники дохода</span>
+          <span class="toggle-arrow" id="arrow-sources">▸</span>
+        </div>
+        <div id="sourcesContent" class="section-content collapsed">
+          <div id="sourcesList"></div>
+        </div>
       </div>
 
       <div class="debts-card">
-        <div class="debts-head">
+        <div class="section-toggle" onclick="toggleSection('debts')">
           <span>📋 Мои долги</span>
           <span class="debts-total" id="debtsTotal">0 грн</span>
+          <span class="toggle-arrow" id="arrow-debts">▸</span>
         </div>
-        <div id="debtsList"></div>
-        <div class="debts-add-row">
-          <input id="fDebtName" type="text" placeholder="Название">
-          <input id="fDebtSum" type="text" inputmode="decimal" placeholder="Сумма">
-          <button onclick="addDebt()">+</button>
+        <div id="debtsContent" class="section-content collapsed">
+          <div id="debtsList"></div>
+          <div class="debts-add-row">
+            <input id="fDebtName" type="text" placeholder="Название">
+            <input id="fDebtSum" type="text" inputmode="decimal" placeholder="Сумма">
+            <button onclick="addDebt()">+</button>
+          </div>
         </div>
       </div>
     </div>
 
     <div>
-  <div id="ordersStrip" class="orders-strip"></div>
+  <div id="ordersByCategory"></div>
   <div class="archive-toggle" onclick="toggleArchive()" id="archiveToggle">Архив (0)</div>
   <div class="archive-list" id="archiveList"></div>
 
@@ -1057,20 +1123,38 @@ function daysUntil(dueDate){
   return Math.round((due - today) / 86400000);
 }
 
-function renderOrders(){
-  const strip = document.getElementById('ordersStrip');
-  if(orders.length === 0){
-    strip.innerHTML = '<div class="empty-orders">Пока нет заказов — нажми "Добавить заказ" выше.</div>';
-    renderCalendar();
-    return;
+let openSections = new Set(); // 'sources', 'debts', 'cat-<Category>'
+
+function toggleSection(key){
+  if(openSections.has(key)) openSections.delete(key);
+  else openSections.add(key);
+  if(key.startsWith('cat-')){
+    renderOrders();
+  } else {
+    applySectionState();
   }
-  const sorted = orders.slice().sort((a, b) => daysUntil(a.dueDate) - daysUntil(b.dueDate));
-  strip.innerHTML = sorted.map(o => {
-    const debt = o.debtId ? debts.find(d => d.id === o.debtId) : null;
-    const debtBadge = debt
-      ? `<div class="due-badge" style="background:#EFE6F7; color:#6a4b9c;">📋 ${escapeHtml(debt.name)}</div>`
-      : '';
-    return `
+}
+
+function applySectionState(){
+  ['sources','debts'].forEach(key => {
+    const content = document.getElementById(key+'Content');
+    const arrow = document.getElementById('arrow-'+key);
+    const isOpen = openSections.has(key);
+    if(content) content.classList.toggle('collapsed', !isOpen);
+    if(arrow) arrow.textContent = isOpen ? '▾' : '▸';
+  });
+}
+
+const CATEGORY_ORDER = ['Константа','Прожиточный минимум','Непредвиденные расходы','Ну очень надо'];
+
+const URGENT_THRESHOLD_DAYS = 3;
+
+function renderOrderCard(o){
+  const debt = o.debtId ? debts.find(d => d.id === o.debtId) : null;
+  const debtBadge = debt
+    ? `<div class="due-badge" style="background:#EFE6F7; color:#6a4b9c;">📋 ${escapeHtml(debt.name)}</div>`
+    : '';
+  return `
     <div class="order-card" style="--cat-color:${CAT_COLORS[o.category]||'#1E8FC4'}">
       <div class="card-controls">
         <button class="ctrl-btn" onclick="editOrder(${o.id})" title="Изменить">✎</button>
@@ -1085,7 +1169,57 @@ function renderOrders(){
       <button class="pay-btn" onclick="payOrder(${o.id})">✓ Оплатить</button>
     </div>
   `;
-  }).join('');
+}
+
+function renderOrders(){
+  const container = document.getElementById('ordersByCategory');
+  if(orders.length === 0){
+    container.innerHTML = '<div class="empty-orders">Пока нет заказов — нажми "Добавить заказ" выше.</div>';
+    renderCalendar();
+    return;
+  }
+
+  const isUrgent = o => o.dueDate && daysUntil(o.dueDate) <= URGENT_THRESHOLD_DAYS;
+  const urgent = orders.filter(isUrgent).sort((a,b) => daysUntil(a.dueDate) - daysUntil(b.dueDate));
+  const rest = orders.filter(o => !isUrgent(o));
+
+  let html = '';
+
+  if(urgent.length > 0){
+    html += `
+    <div class="urgent-section">
+      <div class="urgent-title">🔥 Срочно и просрочено</div>
+      <div class="orders-strip">
+        ${urgent.map(renderOrderCard).join('')}
+      </div>
+    </div>
+    `;
+  }
+
+  CATEGORY_ORDER.forEach(cat => {
+    const inCat = rest.filter(o => o.category === cat).sort((a,b) => daysUntil(a.dueDate) - daysUntil(b.dueDate));
+    if(inCat.length === 0) return;
+    const key = 'cat-' + cat;
+    const total = inCat.reduce((s,o) => s + o.sum, 0);
+    const isOpen = openSections.has(key);
+
+    html += `
+    <div class="cat-section">
+      <div class="cat-section-toggle" onclick="toggleSection('${key}')">
+        <div class="cat-section-title">
+          <span class="cat-dot" style="background:${CAT_COLORS[cat]}"></span>
+          ${escapeHtml(cat)}
+        </div>
+        <div class="cat-section-meta">${inCat.length} шт · ${total.toLocaleString('ru-RU')} грн <span class="toggle-arrow" id="arrow-${key}">${isOpen?'▾':'▸'}</span></div>
+      </div>
+      <div class="orders-strip cat-section-content${isOpen?'':' collapsed'}" data-key="${key}">
+        ${inCat.map(renderOrderCard).join('')}
+      </div>
+    </div>
+    `;
+  });
+
+  container.innerHTML = html;
   renderCalendar();
 }
 
