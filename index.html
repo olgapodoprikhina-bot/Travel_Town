@@ -48,6 +48,67 @@
     box-shadow:0 8px 0 rgba(0,0,0,0.12), 0 10px 20px rgba(0,0,0,0.22);
   }
   .sources-card h2{font-size:15px; margin-bottom:10px;}
+
+  /* --- Debts: intentionally quiet/compact so a long list doesn't feel heavy --- */
+  .debts-card{
+    margin-top:12px;
+    background:rgba(255,255,255,0.55);
+    border-radius:16px;
+    padding:10px 12px;
+  }
+  .debts-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:11.5px;
+    font-weight:800;
+    color:#5a5142;
+    opacity:0.85;
+    margin-bottom:6px;
+  }
+  .debts-total{color:var(--coral); font-weight:800;}
+  .debt-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:3px 0;
+    font-size:11.5px;
+    color:#6b6255;
+    border-bottom:1px solid rgba(0,0,0,0.06);
+  }
+  .debt-row:last-child{border-bottom:none;}
+  .debt-row .d-name{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .debt-row .d-sum{font-weight:700; margin:0 6px; white-space:nowrap;}
+  .debt-row .d-del{
+    border:none; background:none; cursor:pointer;
+    color:#c9b89a; font-size:10px; opacity:0.6;
+  }
+  .debt-row .d-del:hover{opacity:1;}
+  .debts-empty{font-size:11px; color:#a89a83; padding:2px 0;}
+  .debts-add-row{
+    display:flex; gap:4px; margin-top:8px;
+  }
+  .debts-add-row input{
+    border:1.5px solid rgba(0,0,0,0.08);
+    border-radius:8px;
+    padding:5px 7px;
+    font-size:11px;
+    font-family:'Nunito',sans-serif;
+    font-weight:600;
+    min-width:0;
+  }
+  .debts-add-row input:first-child{flex:1.3;}
+  .debts-add-row input:nth-child(2){flex:1;}
+  .debts-add-row button{
+    border:none;
+    background:#D8CBB0;
+    color:#5a5142;
+    border-radius:8px;
+    padding:5px 9px;
+    font-weight:800;
+    cursor:pointer;
+    font-size:12px;
+  }
   .source-item{
     display:flex;
     flex-direction:column;
@@ -121,6 +182,25 @@
   }
   .add-btn:active{transform:translateY(2px); box-shadow:0 2px 0 rgba(0,0,0,0.2);}
 
+  .header-actions{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .icon-btn{
+    border:none;
+    border-radius:12px;
+    padding:8px 12px;
+    font-weight:800;
+    font-size:12px;
+    cursor:pointer;
+    color:#3a5a78;
+    background:rgba(255,255,255,0.85);
+    box-shadow:0 3px 0 rgba(0,0,0,0.15);
+  }
+  .icon-btn:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(0,0,0,0.15);}
+
   /* --- Orders strip --- */
   .orders-strip{
     display:flex;
@@ -150,6 +230,21 @@
     border-radius:20px;
     background:var(--cat-color, var(--sky-deep));
     color:#fff;
+  }
+  .due-badge{
+    margin-top:6px;
+    font-size:10.5px;
+    font-weight:800;
+    padding:3px 8px;
+    border-radius:20px;
+    display:inline-block;
+  }
+  .due-badge.due-ok{background:#E4F4E6; color:#3A8A4E;}
+  .due-badge.due-today{background:#FFF0C4; color:#8A6A00;}
+  .due-badge.due-overdue{background:#FFE0DC; color:var(--coral); animation:pulseOverdue 1.4s ease-in-out infinite;}
+  @keyframes pulseOverdue{
+    0%,100%{opacity:1;}
+    50%{opacity:0.55;}
   }
   .order-card .pay-btn{
     display:block;
@@ -312,13 +407,33 @@
 <div class="wrap">
   <div class="header">
     <h1>🧵 Мои заказы</h1>
-    <button class="add-btn" onclick="openModal()">+ Добавить заказ</button>
+    <div class="header-actions">
+      <button class="icon-btn" onclick="exportData()" title="Скачать резервную копию данных">💾 Сохранить</button>
+      <button class="icon-btn" onclick="document.getElementById('importFile').click()" title="Загрузить данные из файла">📂 Загрузить</button>
+      <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importData(event)">
+      <button class="add-btn" onclick="openModal()">+ Добавить заказ</button>
+    </div>
   </div>
 
   <div class="layout">
-    <div class="sources-card">
-      <h2>💰 Источники дохода</h2>
-      <div id="sourcesList"></div>
+    <div>
+      <div class="sources-card">
+        <h2>💰 Источники дохода</h2>
+        <div id="sourcesList"></div>
+      </div>
+
+      <div class="debts-card">
+        <div class="debts-head">
+          <span>📋 Мои долги</span>
+          <span class="debts-total" id="debtsTotal">0 грн</span>
+        </div>
+        <div id="debtsList"></div>
+        <div class="debts-add-row">
+          <input id="fDebtName" type="text" placeholder="Название">
+          <input id="fDebtSum" type="text" inputmode="decimal" placeholder="Сумма">
+          <button onclick="addDebt()">+</button>
+        </div>
+      </div>
     </div>
 
     <div>
@@ -361,6 +476,24 @@
         <option value="Ну очень надо">Ну очень надо</option>
       </select>
     </div>
+    <div class="field">
+      <label>Дата платежа (для фиксированных — обязательно)</label>
+      <input id="fDate" type="date">
+    </div>
+    <div class="field">
+      <label style="display:flex; align-items:center; gap:6px; font-weight:800;">
+        <input type="checkbox" id="fIsDebt" onchange="toggleDebtSelect()" style="width:auto;">
+        Этот заказ — платёж по долгу
+      </label>
+    </div>
+    <div class="field" id="debtSelectField" style="display:none;">
+      <label>Какой долг</label>
+      <select id="fDebtLink"></select>
+    </div>
+    <div class="field" id="debtPrincipalField" style="display:none;">
+      <label>Сколько из этой суммы идёт на тело долга (остальное — проценты)</label>
+      <input id="fDebtPrincipal" type="text" inputmode="decimal" placeholder="Например: 400 из 550">
+    </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">Отмена</button>
       <button class="btn-save" onclick="saveOrder()">Добавить</button>
@@ -397,6 +530,9 @@ let sources = [
 ];
 let sourceIdCounter = 3;
 
+let debts = [];
+let debtIdCounter = 1;
+
 const SOURCE_ICONS = {
   'Пошив костюмов': ['🪡','🧵','✂️'],
   'От Провидения': ['🍬','🍭','🍰']
@@ -419,13 +555,47 @@ let boardCells = new Array(BOARD_COLS*BOARD_ROWS).fill(null);
 let selectedCellIdx = null;
 let totalSum = 0;
 
-// merge rule: any two tier-1 icons (needle/candy) combine into a gold coin (final form, no further tiers)
-const MERGE_RESULT = {
-  '🪡|🍬': '🪙',
-  '🍬|🪡': '🪙',
-  '🪡|🪡': '🪙',
-  '🍬|🍬': '🪙'
+// once an item reaches the top tier of its category, further same-icon merges assemble pieces
+// toward a final icon (e.g. cake slices -> whole cake) instead of stopping
+const MANNEQUIN_SVG = `<svg viewBox="0 0 100 150" width="26" height="26" style="vertical-align:middle;">
+  <path d="M38,18 C38,8 62,8 62,18 C64,24 64,28 61,32 C67,40 68,55 63,66 C70,76 70,92 63,100 C67,105 67,113 61,116 L39,116 C33,113 33,105 37,100 C30,92 30,76 37,66 C32,55 33,40 39,32 C36,28 36,24 38,18 Z"
+    fill="#2B2620" stroke="#2B2620" stroke-width="2" stroke-linejoin="round"/>
+  <line x1="50" y1="116" x2="50" y2="133" stroke="#2B2620" stroke-width="3"/>
+  <path d="M50,133 C42,133 36,137 36,141 C36,144 40,145 42,142" fill="none" stroke="#2B2620" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M50,133 C58,133 64,137 64,141 C64,144 60,145 58,142" fill="none" stroke="#2B2620" stroke-width="2.5" stroke-linecap="round"/>
+</svg>`;
+
+const ASSEMBLY = {
+  'От Провидения': {maxPieces: 6, finalIcon: '🎂'},
+  'Пошив костюмов': {maxPieces: 6, finalIcon: MANNEQUIN_SVG}
 };
+
+// merge rule: two items of the same category and same tier combine into the next tier of that category
+// e.g. needle+needle -> spool, spool+spool -> scissors; candy+candy -> lollipop, lollipop+lollipop -> cake
+function tryMerge(a, b){
+  if(a.category !== b.category) return null;
+  if(a.icon !== b.icon) return null;
+  const icons = SOURCE_ICONS[a.category] || ORDER_ICONS[a.category];
+  if(!icons) return null;
+  const tierIdx = icons.indexOf(a.icon);
+  if(tierIdx === -1) return null;
+
+  if(tierIdx + 1 < icons.length){
+    // normal ladder upgrade to the next tier
+    return {icon: icons[tierIdx+1], category: a.category, value: a.value + b.value, pieces: 1};
+  }
+
+  // already at top tier — check if this category assembles further
+  const assembly = ASSEMBLY[a.category];
+  if(!assembly) return null;
+
+  const totalPieces = (a.pieces || 1) + (b.pieces || 1);
+  const value = a.value + b.value;
+  if(totalPieces >= assembly.maxPieces){
+    return {icon: assembly.finalIcon, category: a.category, value, pieces: assembly.maxPieces};
+  }
+  return {icon: a.icon, category: a.category, value, pieces: totalPieces};
+}
 
 const CAT_COLORS = {
   'Константа':'#1E8FC4',
@@ -435,11 +605,25 @@ const CAT_COLORS = {
 };
 
 function openModal(){
+  const sel = document.getElementById('fDebtLink');
+  if(debts.length === 0){
+    sel.innerHTML = '<option value="">Нет добавленных долгов</option>';
+  } else {
+    sel.innerHTML = debts.map(d => `<option value="${d.id}">${escapeHtml(d.name)} (${d.sum.toLocaleString('ru-RU')} грн)</option>`).join('');
+  }
   document.getElementById('overlay').classList.add('show');
+}
+function toggleDebtSelect(){
+  const checked = document.getElementById('fIsDebt').checked;
+  document.getElementById('debtSelectField').style.display = checked ? 'flex' : 'none';
+  document.getElementById('debtPrincipalField').style.display = checked ? 'flex' : 'none';
 }
 function closeModal(){
   document.getElementById('overlay').classList.remove('show');
-  ['fName','fPurpose','fSum'].forEach(id => document.getElementById(id).value = '');
+  ['fName','fPurpose','fSum','fDate','fDebtPrincipal'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('fIsDebt').checked = false;
+  document.getElementById('debtSelectField').style.display = 'none';
+  document.getElementById('debtPrincipalField').style.display = 'none';
   document.getElementById('formError').style.display = 'none';
 }
 
@@ -448,6 +632,10 @@ function saveOrder(){
   const purpose = document.getElementById('fPurpose').value.trim();
   const sum = parseFloat(document.getElementById('fSum').value.replace(',', '.'));
   const category = document.getElementById('fCategory').value;
+  const dueDate = document.getElementById('fDate').value;
+  const isDebt = document.getElementById('fIsDebt').checked;
+  const debtId = isDebt ? parseInt(document.getElementById('fDebtLink').value) : null;
+  const debtPrincipal = isDebt ? parseFloat(document.getElementById('fDebtPrincipal').value.replace(',', '.')) : null;
   const errEl = document.getElementById('formError');
 
   if(!name || !sum || sum<=0){
@@ -455,8 +643,23 @@ function saveOrder(){
     errEl.style.display = 'block';
     return;
   }
+  if(category === 'Константа' && !dueDate){
+    errEl.textContent = 'Для константы нужна дата платежа';
+    errEl.style.display = 'block';
+    return;
+  }
+  if(isDebt && !debtId){
+    errEl.textContent = 'Выбери долг из списка';
+    errEl.style.display = 'block';
+    return;
+  }
+  if(isDebt && (!debtPrincipal || debtPrincipal <= 0 || debtPrincipal > sum)){
+    errEl.textContent = 'Впиши сумму на тело долга (не больше общей суммы платежа)';
+    errEl.style.display = 'block';
+    return;
+  }
   errEl.style.display = 'none';
-  orders.push({id:idCounter++, name, purpose, sum, category});
+  orders.push({id:idCounter++, name, purpose, sum, category, dueDate: dueDate || null, debtId: debtId || null, debtPrincipal: debtPrincipal || null});
   closeModal();
   renderOrders();
 }
@@ -507,39 +710,27 @@ function confirmPay(cellIdx){
   archivedOrders.push(order);
   totalSum -= order.sum;
 
+  if(order.debtId){
+    const debt = debts.find(d => d.id === order.debtId);
+    if(debt){
+      debt.sum -= (order.debtPrincipal || order.sum);
+      if(debt.sum <= 0){
+        debts = debts.filter(d => d.id !== order.debtId);
+      }
+    }
+  }
+
   const remaining = item.value - order.sum;
   if(remaining <= 0){
     boardCells[cellIdx] = null;
-  } else if(item.category === 'Монета'){
-    // coins don't have tiers — just reduce their value, icon stays
-    boardCells[cellIdx] = {icon:item.icon, category:item.category, value:remaining};
   } else {
-    boardCells[cellIdx] = {icon: tierIcon(item.category, remaining), category:item.category, value:remaining};
+    boardCells[cellIdx] = {icon: tierIcon(item.category, remaining), category:item.category, value:remaining, pieces:1};
   }
 
   closePayModal();
   renderOrders();
   renderArchive();
-  renderBoard();
-}
-
-function confirmPay(icon){
-  const idx = orders.findIndex(o => o.id === payingOrderId);
-  if(idx === -1) return;
-  const order = orders[idx];
-  orders.splice(idx,1);
-  archivedOrders.push(order);
-
-  totalSum -= order.sum;
-
-  const usedIdx = boardCells.findIndex(c => c === icon);
-  if(usedIdx !== -1){
-    boardCells[usedIdx] = null;
-  }
-
-  closePayModal();
-  renderOrders();
-  renderArchive();
+  renderDebts();
   renderBoard();
 }
 
@@ -591,7 +782,7 @@ function placeFromSource(id){
     input.value = '';
     return; // board full
   }
-  boardCells[emptyIdx] = {icon, category:s.category, value:amt};
+  boardCells[emptyIdx] = {icon, category:s.category, value:amt, pieces:1};
   totalSum += amt;
   input.value = '';
   renderBoard();
@@ -614,11 +805,10 @@ function handleCellClick(idx){
 
   const a = boardCells[selectedCellIdx];
   const b = boardCells[idx];
-  const key = a.icon + '|' + b.icon;
-  const resultIcon = MERGE_RESULT[key];
+  const result = tryMerge(a, b);
 
-  if(resultIcon){
-    boardCells[idx] = {icon: resultIcon, category:'Монета', value: a.value + b.value};
+  if(result){
+    boardCells[idx] = result;
     boardCells[selectedCellIdx] = null;
     selectedCellIdx = null;
   } else {
@@ -650,21 +840,81 @@ function renderSources(){
   }).join('');
 }
 
+function addDebt(){
+  const nameInput = document.getElementById('fDebtName');
+  const sumInput = document.getElementById('fDebtSum');
+  const name = nameInput.value.trim();
+  const sum = parseFloat(sumInput.value.replace(',', '.'));
+  if(!name || !sum || sum <= 0) return;
+  debts.push({id: debtIdCounter++, name, sum});
+  nameInput.value = '';
+  sumInput.value = '';
+  renderDebts();
+}
+
+function deleteDebt(id){
+  debts = debts.filter(d => d.id !== id);
+  renderDebts();
+}
+
+function renderDebts(){
+  const list = document.getElementById('debtsList');
+  const totalEl = document.getElementById('debtsTotal');
+  const total = debts.reduce((sum, d) => sum + d.sum, 0);
+  totalEl.textContent = total.toLocaleString('ru-RU') + ' грн';
+
+  if(debts.length === 0){
+    list.innerHTML = '<div class="debts-empty">Пока пусто — добавь долг ниже.</div>';
+    return;
+  }
+  list.innerHTML = debts.map(d => `
+    <div class="debt-row">
+      <span class="d-name">${escapeHtml(d.name)}</span>
+      <span class="d-sum">${d.sum.toLocaleString('ru-RU')}</span>
+      <button class="d-del" onclick="deleteDebt(${d.id})">✕</button>
+    </div>
+  `).join('');
+}
+
+function daysLeftLabel(dueDate){
+  if(!dueDate) return '';
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const due = new Date(dueDate + 'T00:00:00');
+  const diffDays = Math.round((due - today) / 86400000);
+
+  if(diffDays > 0){
+    return `<div class="due-badge due-ok">Осталось: ${diffDays} дн.</div>`;
+  } else if(diffDays === 0){
+    return `<div class="due-badge due-today">Сегодня срок!</div>`;
+  } else {
+    return `<div class="due-badge due-overdue">Просрочено: ${Math.abs(diffDays)} дн.</div>`;
+  }
+}
+
 function renderOrders(){
   const strip = document.getElementById('ordersStrip');
   if(orders.length === 0){
     strip.innerHTML = '<div class="empty-orders">Пока нет заказов — нажми "Добавить заказ" выше.</div>';
     return;
   }
-  strip.innerHTML = orders.map(o => `
+  strip.innerHTML = orders.map(o => {
+    const debt = o.debtId ? debts.find(d => d.id === o.debtId) : null;
+    const debtBadge = debt
+      ? `<div class="due-badge" style="background:#EFE6F7; color:#6a4b9c;">📋 в долг: ${escapeHtml(debt.name)} (на тело: ${(o.debtPrincipal||0).toLocaleString('ru-RU')} грн)</div>`
+      : '';
+    return `
     <div class="order-card" style="--cat-color:${CAT_COLORS[o.category]||'#1E8FC4'}">
       <div class="name">${escapeHtml(o.name)}</div>
       <div class="purpose">${escapeHtml(o.purpose)}</div>
       <div class="sum">${o.sum.toLocaleString('ru-RU')} грн</div>
       <div class="cat">${escapeHtml(o.category)}</div>
+      ${daysLeftLabel(o.dueDate)}
+      ${debtBadge}
       <button class="pay-btn" onclick="payOrder(${o.id})">✓ Оплатить</button>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function renderBoard(){
@@ -676,7 +926,13 @@ function renderBoard(){
       const shade = (r+c) % 2 === 0 ? 'a' : 'b';
       const item = boardCells[idx];
       const sel = idx === selectedCellIdx ? ' selected' : '';
-      const inner = item ? `<div>${item.icon}</div><div class="cell-value">${item.value.toLocaleString('ru-RU')}</div>` : '';
+      let inner = '';
+      if(item){
+        const assembly = ASSEMBLY[item.category];
+        const isAssembling = assembly && item.pieces && item.pieces > 1 && item.icon !== assembly.finalIcon;
+        const piecesBadge = isAssembling ? `<div class="cell-value">${item.pieces}/${assembly.maxPieces}</div>` : '';
+        inner = `<div>${item.icon}</div>${piecesBadge}<div class="cell-value">${item.value.toLocaleString('ru-RU')}</div>`;
+      }
       html += `<div class="board-cell ${shade}${sel}" onclick="handleCellClick(${idx})">${inner}</div>`;
     }
   }
@@ -691,7 +947,63 @@ function escapeHtml(s){
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+function exportData(){
+  const data = {
+    savedAt: new Date().toISOString(),
+    orders, archivedOrders, idCounter,
+    sources, sourceIdCounter,
+    debts, debtIdCounter,
+    boardCells, totalSum
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `moi-zakazy-backup-${dateStr}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importData(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const data = JSON.parse(e.target.result);
+      if(!data || typeof data !== 'object'){
+        alert('Файл повреждён или это не резервная копия.');
+        return;
+      }
+      orders = data.orders || [];
+      archivedOrders = data.archivedOrders || [];
+      idCounter = data.idCounter || 1;
+      sources = data.sources || sources;
+      sourceIdCounter = data.sourceIdCounter || sourceIdCounter;
+      debts = data.debts || [];
+      debtIdCounter = data.debtIdCounter || 1;
+      boardCells = data.boardCells || new Array(BOARD_COLS*BOARD_ROWS).fill(null);
+      totalSum = data.totalSum || 0;
+      selectedCellIdx = null;
+
+      renderSources();
+      renderDebts();
+      renderOrders();
+      renderArchive();
+      renderBoard();
+    } catch(err){
+      alert('Не получилось прочитать файл: ' + err.message);
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
 renderSources();
+renderDebts();
 renderOrders();
 renderArchive();
 renderBoard();
