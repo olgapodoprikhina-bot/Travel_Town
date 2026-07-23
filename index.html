@@ -201,6 +201,76 @@
   }
   .icon-btn:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(0,0,0,0.15);}
 
+  /* --- Calendar (tiny hint-sized widget) --- */
+  .calendar-card{
+    background:var(--cream);
+    border-radius:10px;
+    padding:6px 8px;
+    box-shadow:0 3px 0 rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.15);
+    margin-bottom:10px;
+    max-width:200px;
+  }
+  .calendar-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:3px;
+    margin-bottom:3px;
+  }
+  .calendar-head h2{font-size:9px; text-transform:capitalize; font-weight:800;}
+  .calendar-legend{
+    display:none;
+  }
+  .calendar-weekdays{
+    display:grid;
+    grid-template-columns:repeat(7, 1fr);
+    font-size:6px;
+    font-weight:800;
+    color:#a89a83;
+    text-align:center;
+    margin-bottom:1px;
+  }
+  .calendar-grid{
+    display:grid;
+    grid-template-columns:repeat(7, 1fr);
+    gap:1px;
+  }
+  .cal-day{
+    aspect-ratio:1;
+    border-radius:3px;
+    background:rgba(0,0,0,0.03);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    font-size:6.5px;
+    font-weight:700;
+    color:#6b6255;
+    position:relative;
+    gap:0;
+  }
+  .cal-day.empty{background:none;}
+  .cal-day.today{
+    background:var(--coral);
+    color:#fff;
+    box-shadow:0 1px 0 rgba(0,0,0,0.15);
+  }
+  .cal-dots{
+    display:flex;
+    gap:1px;
+    flex-wrap:wrap;
+    justify-content:center;
+    max-width:14px;
+    position:absolute;
+    bottom:0px;
+  }
+  .cal-dots i{
+    width:2px; height:2px;
+    border-radius:50%;
+    display:inline-block;
+  }
+
   /* --- Orders strip --- */
   .orders-strip{
     display:flex;
@@ -415,6 +485,22 @@
     </div>
   </div>
 
+  <div class="calendar-card">
+    <div class="calendar-head">
+      <h2 id="calMonthLabel">Месяц</h2>
+      <div class="calendar-legend">
+        <span><i style="background:#1E8FC4"></i>Константа</span>
+        <span><i style="background:#5FCB7A"></i>Мин.</span>
+        <span><i style="background:#FF6F61"></i>Непредв.</span>
+        <span><i style="background:#FFC93C"></i>Надо</span>
+      </div>
+    </div>
+    <div class="calendar-weekdays">
+      <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
+    </div>
+    <div class="calendar-grid" id="calendarGrid"></div>
+  </div>
+
   <div class="layout">
     <div>
       <div class="sources-card">
@@ -479,6 +565,12 @@
     <div class="field">
       <label>Дата платежа (для фиксированных — обязательно)</label>
       <input id="fDate" type="date">
+    </div>
+    <div class="field">
+      <label style="display:flex; align-items:center; gap:6px; font-weight:800;">
+        <input type="checkbox" id="fRecurring" style="width:auto;">
+        Повторяется каждый месяц (пока не закрою)
+      </label>
     </div>
     <div class="field">
       <label style="display:flex; align-items:center; gap:6px; font-weight:800;">
@@ -622,6 +714,7 @@ function closeModal(){
   document.getElementById('overlay').classList.remove('show');
   ['fName','fPurpose','fSum','fDate','fDebtPrincipal'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('fIsDebt').checked = false;
+  document.getElementById('fRecurring').checked = false;
   document.getElementById('debtSelectField').style.display = 'none';
   document.getElementById('debtPrincipalField').style.display = 'none';
   document.getElementById('formError').style.display = 'none';
@@ -659,7 +752,8 @@ function saveOrder(){
     return;
   }
   errEl.style.display = 'none';
-  orders.push({id:idCounter++, name, purpose, sum, category, dueDate: dueDate || null, debtId: debtId || null, debtPrincipal: debtPrincipal || null});
+  const recurring = document.getElementById('fRecurring').checked;
+  orders.push({id:idCounter++, name, purpose, sum, category, dueDate: dueDate || null, debtId: debtId || null, debtPrincipal: debtPrincipal || null, recurring});
   closeModal();
   renderOrders();
 }
@@ -896,6 +990,7 @@ function renderOrders(){
   const strip = document.getElementById('ordersStrip');
   if(orders.length === 0){
     strip.innerHTML = '<div class="empty-orders">Пока нет заказов — нажми "Добавить заказ" выше.</div>';
+    renderCalendar();
     return;
   }
   strip.innerHTML = orders.map(o => {
@@ -915,6 +1010,54 @@ function renderOrders(){
     </div>
   `;
   }).join('');
+  renderCalendar();
+}
+
+const MONTH_NAMES = ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
+
+function renderCalendar(){
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const year = today.getFullYear();
+  const month = today.getMonth();
+
+  document.getElementById('calMonthLabel').textContent = `${MONTH_NAMES[month]} ${year}`;
+
+  const firstOfMonth = new Date(year, month, 1);
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  // Monday-first weekday index (0=Mon..6=Sun)
+  let leadingBlanks = firstOfMonth.getDay() - 1;
+  if(leadingBlanks < 0) leadingBlanks = 6;
+
+  // build day -> [colors] map from unpaid orders
+  const dayMarks = {};
+  orders.forEach(o => {
+    if(!o.dueDate) return;
+    const due = new Date(o.dueDate + 'T00:00:00');
+    let targetDay = null;
+    if(o.recurring){
+      targetDay = due.getDate();
+    } else if(due.getFullYear() === year && due.getMonth() === month){
+      targetDay = due.getDate();
+    }
+    if(targetDay){
+      if(!dayMarks[targetDay]) dayMarks[targetDay] = [];
+      dayMarks[targetDay].push(CAT_COLORS[o.category] || '#1E8FC4');
+    }
+  });
+
+  const grid = document.getElementById('calendarGrid');
+  let html = '';
+  for(let i=0;i<leadingBlanks;i++){
+    html += '<div class="cal-day empty"></div>';
+  }
+  for(let d=1; d<=daysInMonth; d++){
+    const isToday = d === today.getDate();
+    const dots = (dayMarks[d] || []).map(c => `<i style="background:${c}"></i>`).join('');
+    const dotsHtml = dots ? `<div class="cal-dots">${dots}</div>` : '';
+    html += `<div class="cal-day${isToday?' today':''}">${d}${dotsHtml}</div>`;
+  }
+  grid.innerHTML = html;
 }
 
 function renderBoard(){
