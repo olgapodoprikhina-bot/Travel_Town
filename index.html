@@ -77,6 +77,27 @@
     border-radius:16px;
     padding:10px 12px;
   }
+  .client-summary-card{
+    background:#EAF1F0;
+  }
+  .transfer-to-income-btn{
+    display:block;
+    width:100%;
+    border:none;
+    background:#2E9E96;
+    color:#fff;
+    font-weight:800;
+    font-size:11px;
+    padding:7px 0;
+    border-radius:10px;
+    cursor:pointer;
+    margin:6px 0 2px;
+  }
+  .transfer-to-income-btn:disabled{
+    background:#c8d9d7;
+    color:#8aa5a2;
+    cursor:default;
+  }
   .summary-row{
     display:flex;
     justify-content:space-between;
@@ -752,6 +773,16 @@
         </div>
         <div id="summaryContent" class="section-content collapsed">
           <div id="summaryBody"></div>
+        </div>
+      </div>
+
+      <div class="summary-card client-summary-card">
+        <div class="section-toggle" onclick="toggleSection('purchaseTransfer')">
+          <span>💎 Трансфер закупок</span>
+          <span class="toggle-arrow" id="arrow-purchaseTransfer">▸</span>
+        </div>
+        <div id="purchaseTransferContent" class="section-content collapsed">
+          <div id="purchaseTransferBody"></div>
         </div>
       </div>
 
@@ -1457,6 +1488,7 @@ function renderClientFunds(){
   if(!balanceEl) return;
   const balance = clientTx.reduce((s,t) => s + (t.type === 'income' ? t.amount : -t.amount), 0);
   balanceEl.textContent = balance.toLocaleString('ru-RU');
+  renderPurchaseTransfer();
 }
 
 function renderSummary(){
@@ -1497,6 +1529,71 @@ function renderSummary(){
     <div class="summary-divider"></div>
     ${catRows || '<div class="summary-empty">Пока нет расходов за месяц.</div>'}
   `;
+}
+
+function renderPurchaseTransfer(){
+  const body = document.getElementById('purchaseTransferBody');
+  if(!body) return;
+
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = today.getMonth();
+  const inThisMonth = t => {
+    const d = new Date(t.date + 'T00:00:00');
+    return d.getFullYear() === y && d.getMonth() === m;
+  };
+
+  const monthTx = clientTx.filter(inThisMonth);
+  const monthIncome = monthTx.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
+  const monthExpense = monthTx.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
+  const balance = clientTx.reduce((s,t) => s + (t.type === 'income' ? t.amount : -t.amount), 0);
+
+  const byCategory = {};
+  monthTx.filter(t => t.type === 'expense').forEach(t => {
+    byCategory[t.label] = (byCategory[t.label] || 0) + t.amount;
+  });
+  const catRows = Object.keys(byCategory)
+    .sort((a,b) => byCategory[b] - byCategory[a])
+    .map(cat => `
+      <div class="summary-cat-row">
+        <span><span class="dot" style="background:#2E9E96"></span>${escapeHtml(cat)}</span>
+        <span>${byCategory[cat].toLocaleString('ru-RU')} грн</span>
+      </div>
+    `).join('');
+
+  body.innerHTML = `
+    <div class="summary-month">Месяц: текущий (${MONTH_NAMES[m]} ${y})</div>
+    <div class="summary-row total-income"><span>Доход</span><span class="amt" style="color:#2E9E96;">${monthIncome.toLocaleString('ru-RU')} грн</span></div>
+    <div class="summary-row total-expense"><span>Расход</span><span class="amt">${monthExpense.toLocaleString('ru-RU')} грн</span></div>
+    <div class="summary-row"><span>Остаток (общий)</span><span class="amt" style="color:#1E6E67; font-weight:800;">${balance.toLocaleString('ru-RU')} грн</span></div>
+    <button class="transfer-to-income-btn" onclick="transferClientBalanceToIncome()" ${balance <= 0 ? 'disabled' : ''}>➜ Перевести в доход от Провидения</button>
+    <div class="summary-divider"></div>
+    ${catRows || '<div class="summary-empty">Пока нет закупок за месяц.</div>'}
+  `;
+}
+
+function transferClientBalanceToIncome(){
+  const balance = clientTx.reduce((s,t) => s + (t.type === 'income' ? t.amount : -t.amount), 0);
+  if(balance <= 0) return;
+
+  // remove the client (crystal) icons from the board — that value is now converted
+  boardCells = boardCells.map(c => (c && c.category === 'Клиенты') ? null : c);
+
+  // zero out the client ledger transparently (shows up as a labeled expense in history)
+  clientTx.push({id: clientTxIdCounter++, type:'expense', label:'Перевод в личный доход', amount: balance, date: todayStr()});
+
+  // add to personal income under От Провидения
+  const emptyIdx = boardCells.findIndex(c => c === null);
+  if(emptyIdx !== -1){
+    boardCells[emptyIdx] = {icon: tierIcon('От Провидения', balance), category:'От Провидения', value: balance, pieces:1};
+  }
+  totalSum += balance;
+  incomeLog.push({date: todayStr(), category: 'От Провидения', amount: balance});
+
+  renderBoard();
+  renderSources();
+  renderSummary();
+  renderClientFunds();
 }
 
 function daysUntil(dueDate){
@@ -1543,10 +1640,12 @@ function escalateOverdueUtilities(){
 
 let openSections = new Set(); // 'sources', 'debts', 'cat-<Category>'
 
+const SIMPLE_TOGGLE_SECTIONS = ['sources','debts','summary','purchaseTransfer'];
+
 function toggleSection(key){
   if(openSections.has(key)) openSections.delete(key);
   else openSections.add(key);
-  if(key === 'sources' || key === 'debts'){
+  if(SIMPLE_TOGGLE_SECTIONS.includes(key)){
     applySectionState();
   } else {
     renderOrders();
@@ -1554,7 +1653,7 @@ function toggleSection(key){
 }
 
 function applySectionState(){
-  ['sources','debts'].forEach(key => {
+  SIMPLE_TOGGLE_SECTIONS.forEach(key => {
     const content = document.getElementById(key+'Content');
     const arrow = document.getElementById('arrow-'+key);
     const isOpen = openSections.has(key);
