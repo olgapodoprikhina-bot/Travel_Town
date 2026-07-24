@@ -155,6 +155,7 @@
   }
   .summary-row.total-income .amt{color:var(--leaf); font-weight:800;}
   .summary-row.total-expense .amt{color:var(--coral); font-weight:800;}
+  .summary-row-toggle{cursor:pointer; user-select:none;}
   .summary-month{
     font-size:10.5px;
     font-weight:800;
@@ -176,6 +177,38 @@
   }
   .summary-cat-row .dot{width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:5px;}
   .summary-empty{font-size:11px; color:#a89a83;}
+
+  /* --- Yearly overview table --- */
+  .yearly-group-title{
+    font-size:11px;
+    font-weight:800;
+    color:#4a3d2e;
+    margin:8px 0 4px;
+  }
+  .yearly-group-title:first-child{margin-top:0;}
+  .yearly-table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:10px;
+  }
+  .yearly-table th{
+    text-align:right;
+    font-weight:800;
+    color:#a89a83;
+    padding:2px 4px;
+    font-size:9px;
+  }
+  .yearly-table th:first-child, .yearly-table td:first-child{text-align:left;}
+  .yearly-table td{
+    text-align:right;
+    padding:3px 4px;
+    color:#6b6255;
+    font-weight:700;
+    border-top:1px solid rgba(0,0,0,0.06);
+  }
+  .yearly-table td.month-name{color:#4a3d2e; font-weight:800; text-transform:capitalize;}
+  .yearly-table td.income-cell{color:#2E9E96;}
+  .yearly-table td.expense-cell{color:var(--coral);}
 
   /* --- Client funds (materials): visually separated from personal money, neutral palette --- */
   .client-card{
@@ -814,6 +847,16 @@
           <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
         </div>
         <div class="calendar-grid" id="calendarGrid"></div>
+      </div>
+
+      <div class="summary-card">
+        <div class="section-toggle" onclick="toggleSection('yearly')">
+          <span>📅 Годовой обзор</span>
+          <span class="toggle-arrow" id="arrow-yearly">▸</span>
+        </div>
+        <div id="yearlyContent" class="section-content collapsed">
+          <div id="yearlyBody"></div>
+        </div>
       </div>
 
       <div class="sources-card">
@@ -1885,13 +1928,17 @@ function renderSummary(){
       </div>
     `).join('');
 
+  const expenseOpen = openSections.has('summaryExpense');
   body.innerHTML = `
     <div class="summary-month">Месяц: текущий (${MONTH_NAMES[m]} ${y})</div>
     <div class="summary-row total-income"><span>Доход</span><span class="amt">${totalIncome.toLocaleString('ru-RU')} грн</span></div>
-    <div class="summary-row total-expense"><span>Расход</span><span class="amt">${totalExpense.toLocaleString('ru-RU')} грн</span></div>
-    <div class="summary-divider"></div>
-    ${catRows || '<div class="summary-empty">Пока нет расходов за месяц.</div>'}
+    <div class="summary-row total-expense summary-row-toggle" onclick="toggleSection('summaryExpense')">
+      <span>Расход <span class="toggle-arrow" style="font-size:9px;">${expenseOpen?'▾':'▸'}</span></span>
+      <span class="amt">${totalExpense.toLocaleString('ru-RU')} грн</span>
+    </div>
+    ${expenseOpen ? `<div class="summary-divider"></div>${catRows || '<div class="summary-empty">Пока нет расходов за месяц.</div>'}` : ''}
   `;
+  renderYearlyOverview();
 }
 
 function renderPurchaseTransfer(){
@@ -1936,6 +1983,57 @@ function renderPurchaseTransfer(){
     <button class="transfer-to-income-btn" onclick="transferClientBalanceToIncome()" ${balance <= 0 ? 'disabled' : ''}>➜ Перевести в доход от Провидения</button>
     <div class="summary-divider"></div>
     ${catRows || '<div class="summary-empty">Пока нет закупок за месяц.</div>'}
+  `;
+  renderYearlyOverview();
+}
+
+function renderYearlyOverview(){
+  const body = document.getElementById('yearlyBody');
+  if(!body) return;
+
+  const year = new Date().getFullYear();
+  const currentMonth = new Date().getMonth();
+
+  function monthlyTotals(incomeArr, expenseArr){
+    const rows = [];
+    for(let m=0; m<=currentMonth; m++){
+      const inThisMonth = e => {
+        const d = new Date(e.date + 'T00:00:00');
+        return d.getFullYear() === year && d.getMonth() === m;
+      };
+      const inc = incomeArr.filter(inThisMonth).reduce((s,e) => s + e.amount, 0);
+      const exp = expenseArr.filter(inThisMonth).reduce((s,e) => s + e.amount, 0);
+      if(inc > 0 || exp > 0) rows.push({m, inc, exp});
+    }
+    return rows;
+  }
+
+  function tableHtml(rows){
+    if(rows.length === 0) return '<div class="summary-empty">Пока нет данных.</div>';
+    const rowsHtml = rows.slice().reverse().map(r => `
+      <tr>
+        <td class="month-name">${MONTH_NAMES[r.m]}</td>
+        <td class="income-cell">${r.inc.toLocaleString('ru-RU')}</td>
+        <td class="expense-cell">${r.exp.toLocaleString('ru-RU')}</td>
+      </tr>
+    `).join('');
+    return `<table class="yearly-table">
+      <tr><th>Месяц</th><th>Доход</th><th>Расход</th></tr>
+      ${rowsHtml}
+    </table>`;
+  }
+
+  const ordersRows = monthlyTotals(incomeLog, expenseLog);
+  const purchaseRows = monthlyTotals(
+    clientTx.filter(t => t.type === 'income'),
+    clientTx.filter(t => t.type === 'expense')
+  );
+
+  body.innerHTML = `
+    <div class="yearly-group-title">🔁 Заказы</div>
+    ${tableHtml(ordersRows)}
+    <div class="yearly-group-title">💎 Закупки</div>
+    ${tableHtml(purchaseRows)}
   `;
 }
 
@@ -2007,12 +2105,14 @@ function escalateOverdueUtilities(){
 
 let openSections = new Set(); // 'sources', 'debts', 'cat-<Category>'
 
-const SIMPLE_TOGGLE_SECTIONS = ['sources','debts','summary','purchaseTransfer'];
+const SIMPLE_TOGGLE_SECTIONS = ['sources','debts','summary','purchaseTransfer','yearly'];
 
 function toggleSection(key){
   if(openSections.has(key)) openSections.delete(key);
   else openSections.add(key);
-  if(SIMPLE_TOGGLE_SECTIONS.includes(key)){
+  if(key === 'summaryExpense'){
+    renderSummary();
+  } else if(SIMPLE_TOGGLE_SECTIONS.includes(key)){
     applySectionState();
   } else {
     renderOrders();
