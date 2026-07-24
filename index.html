@@ -782,6 +782,11 @@
     margin:0 auto 10px;
     animation:walletBounce 1.8s ease-in-out infinite;
   }
+  .wallet-face.wallet-face-small{
+    width:56px;
+    margin:0 auto 8px;
+    animation:none;
+  }
   .wallet-face svg{width:100%; height:auto; display:block;}
   @keyframes walletBounce{
     0%,100%{transform:translateY(0) rotate(-3deg);}
@@ -1259,6 +1264,20 @@
 
 <div class="overlay" id="jarOverlay">
   <div class="modal">
+    <div class="wallet-face wallet-face-small"><svg viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg">
+        <path d="M20 60 C20 42 34 30 54 30 H146 C166 30 180 42 180 60 V120 C180 138 166 150 146 150 H54 C34 150 20 138 20 120 Z" fill="#C9A030" stroke="#8a6a15" stroke-width="6"/>
+        <path d="M20 60 C20 42 34 30 54 30 H146 C166 30 180 42 180 60 V78 H20 Z" fill="#E8C468" stroke="#8a6a15" stroke-width="6"/>
+        <circle cx="100" cy="78" r="12" fill="#F3E3AE" stroke="#8a6a15" stroke-width="5"/>
+        <circle cx="72" cy="112" r="17" fill="#fff"/>
+        <circle cx="128" cy="112" r="17" fill="#fff"/>
+        <circle cx="75" cy="115" r="8" fill="#2B2620"/>
+        <circle cx="131" cy="115" r="8" fill="#2B2620"/>
+        <circle cx="78" cy="111" r="2.6" fill="#fff"/>
+        <circle cx="134" cy="111" r="2.6" fill="#fff"/>
+        <path d="M84 132 Q100 142 116 132" fill="none" stroke="#5a4310" stroke-width="5" stroke-linecap="round"/>
+        <circle cx="58" cy="126" r="7" fill="#FF9E8A" opacity="0.55"/>
+        <circle cx="142" cy="126" r="7" fill="#FF9E8A" opacity="0.55"/>
+      </svg></div>
     <h2>🫙 Заначка</h2>
     <div style="font-size:12px; font-weight:800; color:#7A5300; background:#FFF3D6; padding:7px 10px; border-radius:10px; margin-bottom:12px;">У заначці зараз: <span id="jarCurrentBalance">0</span> грн</div>
 
@@ -2484,13 +2503,37 @@ function generateRecurringConstantInstances(){
 
 const CONSTANT_CATEGORIES = ['Константа: Кредит','Константа: Комуналка'];
 
+const LEGACY_CATEGORY_MAP = {
+  'Константа': 'Константа: Кредит',
+  'Константа: Коммуналка': 'Константа: Комуналка',
+  'Прожиточный минимум': 'Прожитковий мінімум',
+  'Непредвиденные расходы': 'Непередбачені витрати',
+  'Ну очень надо': 'Дуже треба',
+  'Пошив костюмов': 'Пошиття костюмів',
+  'От Провидения': 'Від Провидіння',
+  'Клиенты': 'Клієнти'
+};
+
+function migrateLegacyCategories(){
+  orders.forEach(o => {
+    if(LEGACY_CATEGORY_MAP[o.category]) o.category = LEGACY_CATEGORY_MAP[o.category];
+  });
+  archivedOrders.forEach(o => {
+    if(LEGACY_CATEGORY_MAP[o.category]) o.category = LEGACY_CATEGORY_MAP[o.category];
+  });
+  sources.forEach(s => {
+    if(LEGACY_CATEGORY_MAP[s.category]) s.category = LEGACY_CATEGORY_MAP[s.category];
+  });
+  boardCells.forEach((c, i) => {
+    if(c && LEGACY_CATEGORY_MAP[c.category]) boardCells[i] = {...c, category: LEGACY_CATEGORY_MAP[c.category]};
+  });
+}
+
 function renderOrders(){
   const container = document.getElementById('ordersByCategory');
 
-  // migrate any legacy category names (e.g. the old single "Константа") so nothing gets orphaned
-  orders.forEach(o => {
-    if(o.category === 'Константа') o.category = 'Константа: Кредит';
-  });
+  // migrate any legacy (old single "Константа", or pre-translation Russian) category names
+  migrateLegacyCategories();
 
   escalateOverdueUtilities();
   generateRecurringConstantInstances();
