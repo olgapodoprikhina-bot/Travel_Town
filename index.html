@@ -1067,6 +1067,9 @@
             <div class="client-row-head">
               <span>👥 Клієнти (на матеріали)</span>
             </div>
+            <div class="source-add-row" style="margin-bottom:5px;">
+              <input id="fClientName" type="text" placeholder="Від кого">
+            </div>
             <div class="source-add-row">
               <input id="fClientAmount" type="text" inputmode="decimal" placeholder="Сума, грн">
               <button onclick="addClientIncome()">Надходження</button>
@@ -1919,7 +1922,9 @@ function todayStr(){
 }
 
 function addClientIncome(){
+  const nameInput = document.getElementById('fClientName');
   const amountInput = document.getElementById('fClientAmount');
+  const clientName = nameInput.value.trim();
   const amount = parseFloat(amountInput.value.replace(',', '.'));
   if(!amount || amount <= 0) return;
 
@@ -1929,7 +1934,8 @@ function addClientIncome(){
     renderBoard();
   }
 
-  clientTx.push({id: clientTxIdCounter++, type:'income', label:'Надходження від клієнта', amount, date: todayStr()});
+  clientTx.push({id: clientTxIdCounter++, type:'income', label: clientName ? ('Від ' + clientName) : 'Надходження від клієнта', amount, date: todayStr()});
+  nameInput.value = '';
   amountInput.value = '';
   renderClientFunds();
 }
@@ -2282,9 +2288,23 @@ function renderPurchaseTransfer(){
       </div>
     `).join('');
 
+  const byClient = {};
+  monthTx.filter(t => t.type === 'income').forEach(t => {
+    byClient[t.label] = (byClient[t.label] || 0) + t.amount;
+  });
+  const clientRows = Object.keys(byClient)
+    .sort((a,b) => byClient[b] - byClient[a])
+    .map(name => `
+      <div class="summary-cat-row">
+        <span><span class="dot" style="background:#2E9E96"></span>${escapeHtml(name)}</span>
+        <span>${byClient[name].toLocaleString('uk-UA')} грн</span>
+      </div>
+    `).join('');
+
   body.innerHTML = `
     <div class="summary-month">Місяць: поточний (${MONTH_NAMES[m]} ${y})</div>
     <div class="summary-row total-income"><span>Дохід</span><span class="amt" style="color:#2E9E96;">${monthIncome.toLocaleString('uk-UA')} грн</span></div>
+    ${clientRows ? `<div style="margin:2px 0 6px 4px;">${clientRows}</div>` : ''}
     <div class="summary-row total-expense"><span>Витрата</span><span class="amt">${monthExpense.toLocaleString('uk-UA')} грн</span></div>
     <div class="summary-row"><span>Залишок (загальний)</span><span class="amt" style="color:#1E6E67; font-weight:800;">${balance.toLocaleString('uk-UA')} грн</span></div>
     <div class="summary-row"><span>Переведено (загальне)</span><span class="amt" style="color:#7a5cb0; font-weight:800;">${totalTransferred.toLocaleString('uk-UA')} грн</span></div>
