@@ -822,21 +822,71 @@
     cursor:pointer;
     padding:4px;
   }
-  .wallet-fab{
+  .wallet-fab-wrap{
     position:fixed;
     bottom:18px; right:18px;
+    z-index:9;
+  }
+  .wallet-fab{
+    position:relative;
+    bottom:auto; right:auto;
     width:56px; height:56px;
     border-radius:50%;
     border:none;
     background:linear-gradient(160deg,#F3E3AE,var(--sun));
     box-shadow:0 4px 12px rgba(0,0,0,0.25);
     cursor:pointer;
-    z-index:9;
     display:flex; align-items:center; justify-content:center;
     padding:8px;
   }
   .wallet-fab svg{width:100%; height:100%;}
   .wallet-fab:active{transform:scale(0.94);}
+  .wallet-hover-menu{
+    position:absolute;
+    bottom:64px; right:0;
+    display:none;
+    flex-direction:column;
+    gap:6px;
+    background:var(--cream);
+    border-radius:14px;
+    padding:8px;
+    box-shadow:0 6px 18px rgba(0,0,0,0.25);
+    white-space:nowrap;
+  }
+  .wallet-fab-wrap:hover .wallet-hover-menu,
+  .wallet-hover-menu.show{display:flex;}
+  .wallet-hover-menu button{
+    border:none;
+    background:#fff;
+    color:var(--ink);
+    border-radius:10px;
+    padding:9px 14px;
+    font-weight:800;
+    font-size:12.5px;
+    cursor:pointer;
+    text-align:left;
+  }
+  .wallet-hover-menu button:hover{background:var(--linen-dark);}
+  .progress-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:7px 0;
+    border-bottom:1px solid rgba(0,0,0,0.07);
+    font-size:13px;
+  }
+  .progress-row:last-child{border-bottom:none;}
+  .progress-row .label{color:#6b6255; font-weight:600;}
+  .progress-row .val{font-weight:800;}
+  .progress-section-title{
+    font-size:11px;
+    font-weight:800;
+    color:#a89a83;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    margin:12px 0 2px;
+  }
+  .progress-section-title:first-child{margin-top:0;}
   .field{display:flex; flex-direction:column; gap:4px; margin-bottom:12px;}
   .field label{font-size:12px; font-weight:800; color:#6b5a3f;}
   .field input, .field select{
@@ -921,7 +971,12 @@
   </div>
 </div>
 
-<button class="wallet-fab" onclick="openWalletGreeting()" title="Поговорить с кошельком"><svg viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg">
+<div class="wallet-fab-wrap" id="walletFabWrap">
+  <div class="wallet-hover-menu" id="walletHoverMenu">
+    <button onclick="openWalletGreeting()">💬 Поговорить</button>
+    <button onclick="openWalletProgress()">📊 Узнать прогресс</button>
+  </div>
+  <button class="wallet-fab" onclick="toggleWalletHoverMenu()" title="Кошелёк"><svg viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg">
     <path d="M20 60 C20 42 34 30 54 30 H146 C166 30 180 42 180 60 V120 C180 138 166 150 146 150 H54 C34 150 20 138 20 120 Z" fill="#C9A030" stroke="#8a6a15" stroke-width="6"/>
     <path d="M20 60 C20 42 34 30 54 30 H146 C166 30 180 42 180 60 V78 H20 Z" fill="#E8C468" stroke="#8a6a15" stroke-width="6"/>
     <circle cx="100" cy="78" r="12" fill="#F3E3AE" stroke="#8a6a15" stroke-width="5"/>
@@ -935,6 +990,17 @@
     <circle cx="58" cy="126" r="7" fill="#FF9E8A" opacity="0.55"/>
     <circle cx="142" cy="126" r="7" fill="#FF9E8A" opacity="0.55"/>
   </svg></button>
+</div>
+
+<div class="overlay" id="walletProgressOverlay">
+  <div class="modal">
+    <h2>📊 Прогресс</h2>
+    <div id="walletProgressBody"></div>
+    <div class="modal-actions">
+      <button class="btn-save" style="width:100%;" onclick="closeWalletProgress()">Понятно</button>
+    </div>
+  </div>
+</div>
 
 <div class="wrap">
   <div class="header">
@@ -1296,6 +1362,17 @@ let jarBalance = 0; // "заначка" — permanent jar on the board, fed by t
 const JAR_INDEX = BOARD_COLS * 2 + (BOARD_COLS - 1); // 3rd row, rightmost column
 
 let jar10Balance = 0; // "банка 10%" — deposit-only, always exactly 10% of a chosen icon's value
+
+// Progress tracking for the wallet's "прогресс" summary
+let debtBaseline = null; // total debts the first time we ever had any — snapshot, never changes after
+let totalDebtPaid = 0;   // running total of principal paid off across all debts
+let totalDebtGrown = 0;  // running total added to debts via overdue-utility escalation
+
+function ensureDebtBaseline(){
+  if(debtBaseline === null && debts.length > 0){
+    debtBaseline = debts.reduce((s,d) => s + d.sum, 0);
+  }
+}
 const JAR10_INDEX = BOARD_COLS - 1; // top row, rightmost corner
 
 function findEmptyBoardIndex(){
@@ -1520,7 +1597,9 @@ function confirmPay(cellIdx){
   if(order.debtId){
     const debt = debts.find(d => d.id === order.debtId);
     if(debt){
-      debt.sum -= (order.debtPrincipal || order.sum);
+      const principalPaid = order.debtPrincipal || order.sum;
+      debt.sum -= principalPaid;
+      totalDebtPaid += principalPaid;
       if(debt.sum <= 0){
         debts = debts.filter(d => d.id !== order.debtId);
       }
@@ -1668,6 +1747,7 @@ function deleteDebt(id){
 }
 
 function renderDebts(){
+  ensureDebtBaseline();
   const list = document.getElementById('debtsList');
   const totalEl = document.getElementById('debtsTotal');
   const total = debts.reduce((sum, d) => sum + d.sum, 0);
@@ -2202,6 +2282,7 @@ function escalateOverdueUtilities(){
     const debt = debts.find(d => d.id === o.debtId);
     if(debt){
       debt.sum += o.sum;
+      totalDebtGrown += o.sum;
     }
     o.escalated = true;
   });
@@ -2510,7 +2591,8 @@ function gatherState(){
     debts, debtIdCounter,
     boardCells, totalSum, jarBalance, jar10Balance,
     incomeLog, expenseLog,
-    clientTx, clientTxIdCounter
+    clientTx, clientTxIdCounter,
+    debtBaseline, totalDebtPaid, totalDebtGrown
   };
 }
 
@@ -2530,6 +2612,9 @@ function applyState(data){
   expenseLog = data.expenseLog || [];
   clientTx = data.clientTx || [];
   clientTxIdCounter = data.clientTxIdCounter || 1;
+  debtBaseline = (data.debtBaseline === undefined) ? null : data.debtBaseline;
+  totalDebtPaid = data.totalDebtPaid || 0;
+  totalDebtGrown = data.totalDebtGrown || 0;
   selectedCellIdx = null;
   if(boardCells.length > JAR_INDEX) boardCells[JAR_INDEX] = null; // JAR_INDEX is always reserved for the jar
   if(boardCells.length > JAR10_INDEX) boardCells[JAR10_INDEX] = null; // JAR10_INDEX is always reserved for the 10% jar
@@ -2650,10 +2735,49 @@ function importData(event){
 }
 
 function openWalletGreeting(){
+  document.getElementById('walletHoverMenu').classList.remove('show');
   document.getElementById('walletOverlay').classList.add('show');
 }
 function closeWalletGreeting(){
   document.getElementById('walletOverlay').classList.remove('show');
+}
+
+function toggleWalletHoverMenu(){
+  document.getElementById('walletHoverMenu').classList.toggle('show');
+}
+
+document.addEventListener('click', function(e){
+  const wrap = document.getElementById('walletFabWrap');
+  if(wrap && !wrap.contains(e.target)){
+    document.getElementById('walletHoverMenu').classList.remove('show');
+  }
+});
+
+function openWalletProgress(){
+  document.getElementById('walletHoverMenu').classList.remove('show');
+  ensureDebtBaseline();
+
+  const currentDebt = debts.reduce((s,d) => s + d.sum, 0);
+  const baseline = debtBaseline === null ? currentDebt : debtBaseline;
+  const jarsTotal = jarBalance + jar10Balance;
+
+  document.getElementById('walletProgressBody').innerHTML = `
+    <div class="progress-section-title">Долги</div>
+    <div class="progress-row"><span class="label">Было на начало</span><span class="val">${baseline.toLocaleString('ru-RU')} грн</span></div>
+    <div class="progress-row"><span class="label">Сейчас</span><span class="val">${currentDebt.toLocaleString('ru-RU')} грн</span></div>
+    <div class="progress-row"><span class="label">Погашено всего</span><span class="val" style="color:#3A8A4E;">${totalDebtPaid.toLocaleString('ru-RU')} грн</span></div>
+    <div class="progress-row"><span class="label">Выросли на</span><span class="val" style="color:var(--coral);">${totalDebtGrown.toLocaleString('ru-RU')} грн</span></div>
+
+    <div class="progress-section-title">Бюджет сейчас</div>
+    <div class="progress-row"><span class="label">Доступно на доске</span><span class="val" style="color:#7A5300;">${totalSum.toLocaleString('ru-RU')} грн</span></div>
+    <div class="progress-row"><span class="label">🫙 Заначка</span><span class="val" style="color:#4E3369;">${jarBalance.toLocaleString('ru-RU')} грн</span></div>
+    <div class="progress-row"><span class="label">🫙 Банка 10%</span><span class="val" style="color:#2E6B3A;">${jar10Balance.toLocaleString('ru-RU')} грн</span></div>
+    <div class="progress-row"><span class="label">Всего по банкам</span><span class="val">${jarsTotal.toLocaleString('ru-RU')} грн</span></div>
+  `;
+  document.getElementById('walletProgressOverlay').classList.add('show');
+}
+function closeWalletProgress(){
+  document.getElementById('walletProgressOverlay').classList.remove('show');
 }
 
 function walletChoice(choice){
