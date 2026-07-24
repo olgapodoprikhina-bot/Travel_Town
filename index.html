@@ -1003,7 +1003,19 @@
   <div class="modal">
     <h2>🫙 Заначка</h2>
     <div style="font-size:12px; font-weight:800; color:#7A5300; background:#FFF3D6; padding:7px 10px; border-radius:10px; margin-bottom:12px;">В заначке сейчас: <span id="jarCurrentBalance">0</span> грн</div>
-    <div id="jarFormStep">
+
+    <div id="jarChoiceStep">
+      <div style="font-size:13.5px; font-weight:800; color:#4a3d2e; margin-bottom:14px; text-align:center;">Что ты хочешь сделать?</div>
+      <div class="modal-actions" style="margin-top:0;">
+        <button class="btn-save" onclick="showJarStep('jarFormStep')">Положить</button>
+        <button class="btn-cancel" onclick="startJarWithdraw()">Забрать</button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeJarModal()" style="width:100%;">Закрыть</button>
+      </div>
+    </div>
+
+    <div id="jarFormStep" style="display:none;">
       <div style="font-size:12.5px; color:#7a7264; font-weight:700; margin-bottom:10px;">Выбери, откуда переводишь</div>
       <div id="jarSourceGrid" style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:12px;"></div>
       <div class="field" id="jarAmountField" style="display:none;">
@@ -1011,10 +1023,53 @@
         <input id="fJarAmount" type="text" inputmode="decimal" placeholder="Сумма, грн">
       </div>
       <div class="modal-actions">
-        <button class="btn-cancel" onclick="closeJarModal()">Отмена</button>
+        <button class="btn-cancel" onclick="showJarStep('jarChoiceStep')">Назад</button>
         <button class="btn-save" id="jarConfirmBtn" style="display:none;" onclick="confirmJarTransfer()">Перевести</button>
       </div>
       <div id="jarError" style="color:#B5483D; font-size:12px; font-weight:700; margin-top:8px; display:none;"></div>
+    </div>
+
+    <div id="jarWithdrawQ1Step" style="display:none;">
+      <div style="font-size:13.5px; font-weight:800; color:#4a3d2e; margin-bottom:14px; text-align:center;">Ты точно хочешь взять деньги?</div>
+      <div class="modal-actions" style="margin-top:0;">
+        <button class="btn-save" onclick="showJarStep('jarWithdrawQ2Step')">Да</button>
+        <button class="btn-cancel" onclick="showJarStep('jarWithdrawDeclineStep')">Нет</button>
+      </div>
+    </div>
+
+    <div id="jarWithdrawQ2Step" style="display:none;">
+      <div style="font-size:13.5px; font-weight:800; color:#4a3d2e; margin-bottom:14px; text-align:center;">А это тебе сейчас очень необходимо?</div>
+      <div class="modal-actions" style="margin-top:0;">
+        <button class="btn-save" onclick="showJarStep('jarWithdrawQ3Step')">Да</button>
+        <button class="btn-cancel" onclick="showJarStep('jarWithdrawDeclineStep')">Нет</button>
+      </div>
+    </div>
+
+    <div id="jarWithdrawQ3Step" style="display:none;">
+      <div style="font-size:13.5px; font-weight:800; color:#4a3d2e; margin-bottom:14px; text-align:center;">Это жизненно важно или для развлечения?</div>
+      <div class="modal-actions" style="margin-top:0;">
+        <button class="btn-save" onclick="showJarStep('jarWithdrawAmountStep')">Жизненно важно</button>
+        <button class="btn-cancel" onclick="showJarStep('jarWithdrawDeclineStep')">Для развлечения</button>
+      </div>
+    </div>
+
+    <div id="jarWithdrawDeclineStep" style="display:none;">
+      <div style="font-size:13.5px; font-weight:700; color:#4a3d2e; margin-bottom:14px; text-align:center; line-height:1.5;">Наверное, пусть деньги останутся у меня 🙂</div>
+      <div class="modal-actions" style="margin-top:0;">
+        <button class="btn-save" style="width:100%;" onclick="closeJarModal()">Хорошо</button>
+      </div>
+    </div>
+
+    <div id="jarWithdrawAmountStep" style="display:none;">
+      <div class="field">
+        <label>Сколько забрать из заначки (не больше остатка)</label>
+        <input id="fJarWithdrawAmount" type="text" inputmode="decimal" placeholder="Сумма, грн">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="showJarStep('jarChoiceStep')">Назад</button>
+        <button class="btn-save" onclick="confirmJarWithdraw()">Забрать</button>
+      </div>
+      <div id="jarWithdrawError" style="color:#B5483D; font-size:12px; font-weight:700; margin-top:8px; display:none;"></div>
     </div>
   </div>
 </div>
@@ -1592,16 +1647,26 @@ function proceedToPurchasePicker(){
 
 let jarSourceCellIdx = null;
 
+const JAR_STEPS = ['jarChoiceStep','jarFormStep','jarWithdrawQ1Step','jarWithdrawQ2Step','jarWithdrawQ3Step','jarWithdrawDeclineStep','jarWithdrawAmountStep'];
+
+function showJarStep(stepId){
+  JAR_STEPS.forEach(id => {
+    document.getElementById(id).style.display = (id === stepId) ? 'block' : 'none';
+  });
+}
+
 function openJarModal(){
   document.getElementById('jarCurrentBalance').textContent = jarBalance.toLocaleString('ru-RU');
   document.getElementById('jarError').style.display = 'none';
+  document.getElementById('jarWithdrawError').style.display = 'none';
   document.getElementById('jarAmountField').style.display = 'none';
   document.getElementById('jarConfirmBtn').style.display = 'none';
   document.getElementById('fJarAmount').value = '';
+  document.getElementById('fJarWithdrawAmount').value = '';
   jarSourceCellIdx = null;
 
   const sourceIndexes = boardCells
-    .map((c, i) => (i !== JAR_INDEX && c && c.category !== 'Клиенты' && c.category !== 'Банка') ? i : null)
+    .map((c, i) => (i !== JAR_INDEX && i !== JAR10_INDEX && c && c.category !== 'Клиенты' && c.category !== 'Банка') ? i : null)
     .filter(i => i !== null);
 
   const grid = document.getElementById('jarSourceGrid');
@@ -1616,7 +1681,16 @@ function openJarModal(){
     `).join('');
   }
 
+  showJarStep('jarChoiceStep');
   document.getElementById('jarOverlay').classList.add('show');
+}
+
+function startJarWithdraw(){
+  if(jarBalance <= 0){
+    showJarStep('jarWithdrawDeclineStep');
+    return;
+  }
+  showJarStep('jarWithdrawQ1Step');
 }
 
 function selectJarSource(cellIdx){
@@ -1658,6 +1732,32 @@ function confirmJarTransfer(){
 
   closeJarModal();
   renderBoard();
+}
+
+function confirmJarWithdraw(){
+  const errEl = document.getElementById('jarWithdrawError');
+  const amount = parseFloat(document.getElementById('fJarWithdrawAmount').value.replace(',', '.'));
+
+  if(!amount || amount <= 0 || amount > jarBalance){
+    errEl.textContent = 'Впиши сумму не больше, чем есть в заначке';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  jarBalance -= amount;
+
+  // money comes back onto the board as personal income (От Провидения tier), keeping totalSum == sum(board)
+  const emptyIdx = findEmptyBoardIndex();
+  if(emptyIdx !== -1){
+    boardCells[emptyIdx] = {icon: tierIcon('От Провидения', amount), category:'От Провидения', value: amount, pieces:1};
+  }
+  totalSum += amount;
+  incomeLog.push({date: todayStr(), category: 'От Провидения', amount});
+
+  closeJarModal();
+  renderBoard();
+  renderSources();
+  renderSummary();
 }
 
 let jar10SourceCellIdx = null;
