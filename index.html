@@ -565,7 +565,8 @@
     <div class="calendar-head">
       <h2 id="calMonthLabel">Месяц</h2>
       <div class="calendar-legend">
-        <span><i style="background:#1E8FC4"></i>Константа</span>
+        <span><i style="background:#1E8FC4"></i>Кредит</span>
+        <span><i style="background:#2E9E96"></i>Коммуналка</span>
         <span><i style="background:#5FCB7A"></i>Мин.</span>
         <span><i style="background:#FF6F61"></i>Непредв.</span>
         <span><i style="background:#FFC93C"></i>Надо</span>
@@ -640,7 +641,8 @@
     <div class="field">
       <label>Категория</label>
       <select id="fCategory">
-        <option value="Константа">Константа (кредит, коммуналка)</option>
+        <option value="Константа: Кредит">Константа: Кредит</option>
+        <option value="Константа: Коммуналка">Константа: Коммуналка</option>
         <option value="Прожиточный минимум">Прожиточный минимум (еда)</option>
         <option value="Непредвиденные расходы">Непредвиденные расходы</option>
         <option value="Ну очень надо">Ну очень надо</option>
@@ -695,7 +697,8 @@ let archivedOrders = [];
 let idCounter = 1;
 
 const ORDER_ICONS = {
-  'Константа': ['📄','🧾','🏦'],
+  'Константа: Кредит': ['📄','🧾','🏦'],
+  'Константа: Коммуналка': ['💡','🧾','🏠'],
   'Прожиточный минимум': ['🥕','🍞','🛒'],
   'Непредвиденные расходы': ['⚡','🔧','🚨'],
   'Ну очень надо': ['💝','🎁','💎']
@@ -774,7 +777,8 @@ function tryMerge(a, b){
 }
 
 const CAT_COLORS = {
-  'Константа':'#1E8FC4',
+  'Константа: Кредит':'#1E8FC4',
+  'Константа: Коммуналка':'#2E9E96',
   'Прожиточный минимум':'#5FCB7A',
   'Непредвиденные расходы':'#FF6F61',
   'Ну очень надо':'#FFC93C'
@@ -857,7 +861,7 @@ function saveOrder(){
     errEl.style.display = 'block';
     return;
   }
-  if(category === 'Константа' && !dueDate){
+  if((category === 'Константа: Кредит' || category === 'Константа: Коммуналка') && !dueDate){
     errEl.textContent = 'Для константы нужна дата платежа';
     errEl.style.display = 'block';
     return;
@@ -1145,7 +1149,7 @@ function applySectionState(){
   });
 }
 
-const CATEGORY_ORDER = ['Константа','Прожиточный минимум','Непредвиденные расходы','Ну очень надо'];
+const CATEGORY_ORDER = ['Константа: Кредит','Константа: Коммуналка','Прожиточный минимум','Непредвиденные расходы','Ну очень надо'];
 
 const URGENT_THRESHOLD_DAYS = 3;
 
