@@ -695,6 +695,17 @@
   }
   .board-cell.a{background:var(--board-a);}
   .board-cell.b{background:var(--board-b);}
+  .board-cell.jar-cell{
+    background:linear-gradient(160deg,#7C5A9E,#4E3369);
+    box-shadow:inset 0 0 0 2px rgba(78,51,105,0.6);
+    color:#fff;
+  }
+  .board-cell.jar-cell .cell-value{color:#E8DBF2;}
+  .board-cell.jar10-cell{
+    background:linear-gradient(160deg,#C8EFC0,#93D688);
+    box-shadow:inset 0 0 0 2px rgba(95,203,122,0.5);
+  }
+  .board-cell.jar10-cell .cell-value{color:#2E6B3A; font-weight:800;}
 
   /* --- Modal --- */
   .overlay{
@@ -979,6 +990,43 @@
   </div>
 </div>
 
+<div class="overlay" id="jarOverlay">
+  <div class="modal">
+    <h2>🫙 Заначка</h2>
+    <div style="font-size:12px; font-weight:800; color:#7A5300; background:#FFF3D6; padding:7px 10px; border-radius:10px; margin-bottom:12px;">В заначке сейчас: <span id="jarCurrentBalance">0</span> грн</div>
+    <div id="jarFormStep">
+      <div style="font-size:12.5px; color:#7a7264; font-weight:700; margin-bottom:10px;">Выбери, откуда переводишь</div>
+      <div id="jarSourceGrid" style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:12px;"></div>
+      <div class="field" id="jarAmountField" style="display:none;">
+        <label>Сколько перевести в заначку</label>
+        <input id="fJarAmount" type="text" inputmode="decimal" placeholder="Сумма, грн">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeJarModal()">Отмена</button>
+        <button class="btn-save" id="jarConfirmBtn" style="display:none;" onclick="confirmJarTransfer()">Перевести</button>
+      </div>
+      <div id="jarError" style="color:#B5483D; font-size:12px; font-weight:700; margin-top:8px; display:none;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="jar10Overlay">
+  <div class="modal">
+    <h2>🫙 Банка 10%</h2>
+    <div style="font-size:12px; font-weight:800; color:#2E6B3A; background:#E4F5E0; padding:7px 10px; border-radius:10px; margin-bottom:12px;">В банке сейчас: <span id="jar10CurrentBalance">0</span> грн · вывести отсюда нельзя</div>
+    <div id="jar10FormStep">
+      <div style="font-size:12.5px; color:#7a7264; font-weight:700; margin-bottom:10px;">С какой суммы отчислить 10%</div>
+      <div id="jar10SourceGrid" style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:12px;"></div>
+      <div id="jar10Preview" style="display:none; font-size:13px; font-weight:800; color:#2E6B3A; text-align:center; margin-bottom:10px;"></div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeJar10Modal()">Отмена</button>
+        <button class="btn-save" id="jar10ConfirmBtn" style="display:none;" onclick="confirmJar10Transfer()">Пополнить на 10%</button>
+      </div>
+      <div id="jar10Error" style="color:#B5483D; font-size:12px; font-weight:700; margin-top:8px; display:none;"></div>
+    </div>
+  </div>
+</div>
+
 <script>
 let suppressSync = false; // true while applying incoming remote data, to avoid sync loops
 let syncTimer = null;
@@ -1026,6 +1074,16 @@ const BOARD_COLS = 7, BOARD_ROWS = 8;
 let boardCells = new Array(BOARD_COLS*BOARD_ROWS).fill(null);
 let selectedCellIdx = null;
 let totalSum = 0;
+let jarBalance = 0; // "заначка" — permanent jar on the board, fed by transfers from personal income icons
+const JAR_INDEX = BOARD_COLS * 2 + (BOARD_COLS - 1); // 3rd row, rightmost column
+
+let jar10Balance = 0; // "банка 10%" — deposit-only, always exactly 10% of a chosen icon's value
+const JAR10_INDEX = BOARD_COLS - 1; // top row, rightmost corner
+
+function findEmptyBoardIndex(){
+  // JAR_INDEX / JAR10_INDEX are permanently reserved for the jars
+  return boardCells.findIndex((c, i) => i !== JAR_INDEX && i !== JAR10_INDEX && c === null);
+}
 let incomeLog = [];  // {date:'YYYY-MM-DD', category, amount}
 let expenseLog = []; // {date:'YYYY-MM-DD', category, amount}
 
@@ -1309,7 +1367,7 @@ function placeFromSource(id){
 
   const icon = tierIcon(s.category, amt);
 
-  const emptyIdx = boardCells.findIndex(c => c === null);
+  const emptyIdx = findEmptyBoardIndex();
   if(emptyIdx === -1){
     input.value = '';
     return; // board full
@@ -1450,7 +1508,7 @@ function addClientIncome(){
   const amount = parseFloat(amountInput.value.replace(',', '.'));
   if(!amount || amount <= 0) return;
 
-  const emptyIdx = boardCells.findIndex(c => c === null);
+  const emptyIdx = findEmptyBoardIndex();
   if(emptyIdx !== -1){
     boardCells[emptyIdx] = {icon: tierIcon('Клиенты', amount), category:'Клиенты', value:amount, pieces:1};
     renderBoard();
@@ -1521,6 +1579,145 @@ function proceedToPurchasePicker(){
   purchasingAmount = amount;
   document.getElementById('purchaseFormStep').style.display = 'none';
   document.getElementById('purchasePickerStep').style.display = 'block';
+}
+
+let jarSourceCellIdx = null;
+
+function openJarModal(){
+  document.getElementById('jarCurrentBalance').textContent = jarBalance.toLocaleString('ru-RU');
+  document.getElementById('jarError').style.display = 'none';
+  document.getElementById('jarAmountField').style.display = 'none';
+  document.getElementById('jarConfirmBtn').style.display = 'none';
+  document.getElementById('fJarAmount').value = '';
+  jarSourceCellIdx = null;
+
+  const sourceIndexes = boardCells
+    .map((c, i) => (i !== JAR_INDEX && c && c.category !== 'Клиенты' && c.category !== 'Банка') ? i : null)
+    .filter(i => i !== null);
+
+  const grid = document.getElementById('jarSourceGrid');
+  if(sourceIndexes.length === 0){
+    grid.innerHTML = '<div style="font-size:12.5px; color:#8a7264;">На доске пока нет личных доходов, откуда переводить.</div>';
+  } else {
+    grid.innerHTML = sourceIndexes.map(i => `
+      <div class="icon-choice" onclick="selectJarSource(${i})" id="jar-src-${i}" style="flex-direction:column; gap:2px;">
+        <div>${boardCells[i].icon}</div>
+        <div style="font-size:9px; font-weight:800; color:#8a7264;">${boardCells[i].value.toLocaleString('ru-RU')}</div>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('jarOverlay').classList.add('show');
+}
+
+function selectJarSource(cellIdx){
+  jarSourceCellIdx = cellIdx;
+  document.querySelectorAll('#jarSourceGrid .icon-choice').forEach(el => el.style.borderColor = '#E9DCC0');
+  const chosen = document.getElementById('jar-src-'+cellIdx);
+  if(chosen) chosen.style.borderColor = 'var(--leaf)';
+  document.getElementById('jarAmountField').style.display = 'flex';
+  document.getElementById('jarConfirmBtn').style.display = 'block';
+}
+
+function closeJarModal(){
+  document.getElementById('jarOverlay').classList.remove('show');
+  jarSourceCellIdx = null;
+}
+
+function confirmJarTransfer(){
+  const errEl = document.getElementById('jarError');
+  const item = jarSourceCellIdx !== null ? boardCells[jarSourceCellIdx] : null;
+  const amount = parseFloat(document.getElementById('fJarAmount').value.replace(',', '.'));
+
+  if(!item){
+    errEl.textContent = 'Выбери, откуда переводить';
+    errEl.style.display = 'block';
+    return;
+  }
+  if(!amount || amount <= 0 || amount > item.value){
+    errEl.textContent = 'Впиши сумму не больше, чем есть в выбранной иконке';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const remaining = item.value - amount;
+  boardCells[jarSourceCellIdx] = remaining <= 0
+    ? null
+    : {icon: tierIcon(item.category, remaining), category: item.category, value: remaining, pieces:1};
+
+  jarBalance += amount;
+
+  closeJarModal();
+  renderBoard();
+}
+
+let jar10SourceCellIdx = null;
+
+function openJar10Modal(){
+  document.getElementById('jar10CurrentBalance').textContent = jar10Balance.toLocaleString('ru-RU');
+  document.getElementById('jar10Error').style.display = 'none';
+  document.getElementById('jar10Preview').style.display = 'none';
+  document.getElementById('jar10ConfirmBtn').style.display = 'none';
+  jar10SourceCellIdx = null;
+
+  const sourceIndexes = boardCells
+    .map((c, i) => (i !== JAR_INDEX && i !== JAR10_INDEX && c && c.category !== 'Клиенты') ? i : null)
+    .filter(i => i !== null);
+
+  const grid = document.getElementById('jar10SourceGrid');
+  if(sourceIndexes.length === 0){
+    grid.innerHTML = '<div style="font-size:12.5px; color:#8a7264;">На доске пока нет подходящих иконок.</div>';
+  } else {
+    grid.innerHTML = sourceIndexes.map(i => `
+      <div class="icon-choice" onclick="selectJar10Source(${i})" id="jar10-src-${i}" style="flex-direction:column; gap:2px;">
+        <div>${boardCells[i].icon}</div>
+        <div style="font-size:9px; font-weight:800; color:#8a7264;">${boardCells[i].value.toLocaleString('ru-RU')}</div>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('jar10Overlay').classList.add('show');
+}
+
+function selectJar10Source(cellIdx){
+  jar10SourceCellIdx = cellIdx;
+  document.querySelectorAll('#jar10SourceGrid .icon-choice').forEach(el => el.style.borderColor = '#E9DCC0');
+  const chosen = document.getElementById('jar10-src-'+cellIdx);
+  if(chosen) chosen.style.borderColor = 'var(--leaf)';
+
+  const item = boardCells[cellIdx];
+  const tenPercent = Math.round(item.value * 0.1 * 100) / 100;
+  const previewEl = document.getElementById('jar10Preview');
+  previewEl.textContent = `10% от ${item.value.toLocaleString('ru-RU')} грн = ${tenPercent.toLocaleString('ru-RU')} грн`;
+  previewEl.style.display = 'block';
+  document.getElementById('jar10ConfirmBtn').style.display = 'block';
+}
+
+function closeJar10Modal(){
+  document.getElementById('jar10Overlay').classList.remove('show');
+  jar10SourceCellIdx = null;
+}
+
+function confirmJar10Transfer(){
+  const errEl = document.getElementById('jar10Error');
+  const item = jar10SourceCellIdx !== null ? boardCells[jar10SourceCellIdx] : null;
+
+  if(!item){
+    errEl.textContent = 'Выбери, с какой суммы отчислять';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const tenPercent = Math.round(item.value * 0.1 * 100) / 100;
+  const remaining = item.value - tenPercent;
+  boardCells[jar10SourceCellIdx] = remaining <= 0
+    ? null
+    : {icon: tierIcon(item.category, remaining), category: item.category, value: remaining, pieces:1};
+
+  jar10Balance += tenPercent;
+
+  closeJar10Modal();
+  renderBoard();
 }
 
 function finalizePurchase(cellIdx){
@@ -1644,7 +1841,7 @@ function transferClientBalanceToIncome(){
   clientTx.push({id: clientTxIdCounter++, type:'expense', label:'Перевод в личный доход', amount: balance, date: todayStr()});
 
   // add to personal income under От Провидения
-  const emptyIdx = boardCells.findIndex(c => c === null);
+  const emptyIdx = findEmptyBoardIndex();
   if(emptyIdx !== -1){
     boardCells[emptyIdx] = {icon: tierIcon('От Провидения', balance), category:'От Провидения', value: balance, pieces:1};
   }
@@ -1952,6 +2149,16 @@ function renderBoard(){
     for(let c=0;c<BOARD_COLS;c++){
       const idx = r*BOARD_COLS + c;
       const shade = (r+c) % 2 === 0 ? 'a' : 'b';
+
+      if(idx === JAR_INDEX){
+        html += `<div class="board-cell ${shade} jar-cell" onclick="openJarModal()" title="Заначка"><div>🫙</div><div class="cell-value">${jarBalance.toLocaleString('ru-RU')}</div></div>`;
+        continue;
+      }
+      if(idx === JAR10_INDEX){
+        html += `<div class="board-cell ${shade} jar10-cell" onclick="openJar10Modal()" title="Банка 10%"><div>🫙</div><div class="cell-value">${jar10Balance.toLocaleString('ru-RU')}</div></div>`;
+        continue;
+      }
+
       const item = boardCells[idx];
       const sel = idx === selectedCellIdx ? ' selected' : '';
       let inner = '';
@@ -1981,7 +2188,7 @@ function gatherState(){
     orders, archivedOrders, idCounter,
     sources, sourceIdCounter,
     debts, debtIdCounter,
-    boardCells, totalSum,
+    boardCells, totalSum, jarBalance, jar10Balance,
     incomeLog, expenseLog,
     clientTx, clientTxIdCounter
   };
@@ -1997,11 +2204,15 @@ function applyState(data){
   debtIdCounter = data.debtIdCounter || 1;
   boardCells = data.boardCells || new Array(BOARD_COLS*BOARD_ROWS).fill(null);
   totalSum = data.totalSum || 0;
+  jarBalance = data.jarBalance || 0;
+  jar10Balance = data.jar10Balance || 0;
   incomeLog = data.incomeLog || [];
   expenseLog = data.expenseLog || [];
   clientTx = data.clientTx || [];
   clientTxIdCounter = data.clientTxIdCounter || 1;
   selectedCellIdx = null;
+  if(boardCells.length > JAR_INDEX) boardCells[JAR_INDEX] = null; // JAR_INDEX is always reserved for the jar
+  if(boardCells.length > JAR10_INDEX) boardCells[JAR10_INDEX] = null; // JAR10_INDEX is always reserved for the 10% jar
 }
 
 function renderEverything(){
@@ -2082,12 +2293,7 @@ function bootstrapSync(){
 function exportData(){
   const data = {
     savedAt: new Date().toISOString(),
-    orders, archivedOrders, idCounter,
-    sources, sourceIdCounter,
-    debts, debtIdCounter,
-    boardCells, totalSum,
-    incomeLog, expenseLog,
-    clientTx, clientTxIdCounter
+    ...gatherState()
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
