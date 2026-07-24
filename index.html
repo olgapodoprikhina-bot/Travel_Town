@@ -768,6 +768,75 @@
     box-shadow:0 16px 40px rgba(0,0,0,0.35);
   }
   .modal h2{font-size:19px; margin-bottom:14px;}
+
+  /* --- Wallet mascot --- */
+  .wallet-modal{
+    text-align:center;
+    max-width:320px;
+  }
+  .wallet-face{
+    width:110px;
+    margin:0 auto 10px;
+    animation:walletBounce 1.8s ease-in-out infinite;
+  }
+  .wallet-face svg{width:100%; height:auto; display:block;}
+  @keyframes walletBounce{
+    0%,100%{transform:translateY(0) rotate(-3deg);}
+    50%{transform:translateY(-6px) rotate(3deg);}
+  }
+  .wallet-bubble{
+    background:#fff;
+    border-radius:16px;
+    padding:10px 14px;
+    font-family:'Baloo 2',cursive;
+    font-size:16px;
+    color:var(--ink);
+    margin-bottom:16px;
+    box-shadow:0 3px 0 rgba(0,0,0,0.08);
+    display:inline-block;
+  }
+  .wallet-choices{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    margin-bottom:12px;
+  }
+  .wallet-choice-btn{
+    border:none;
+    background:var(--sky-deep);
+    color:#fff;
+    border-radius:14px;
+    padding:11px 14px;
+    font-weight:800;
+    font-size:13.5px;
+    cursor:pointer;
+    text-align:left;
+  }
+  .wallet-choice-btn:active{transform:translateY(1px);}
+  .wallet-close-btn{
+    border:none;
+    background:none;
+    color:#a89a83;
+    font-size:11.5px;
+    font-weight:700;
+    cursor:pointer;
+    padding:4px;
+  }
+  .wallet-fab{
+    position:fixed;
+    bottom:18px; right:18px;
+    width:56px; height:56px;
+    border-radius:50%;
+    border:none;
+    background:linear-gradient(160deg,#F3E3AE,var(--sun));
+    box-shadow:0 4px 12px rgba(0,0,0,0.25);
+    cursor:pointer;
+    z-index:9;
+    display:flex; align-items:center; justify-content:center;
+    padding:8px;
+  }
+  .wallet-fab svg{width:100%; height:100%;}
+  .wallet-fab:active{transform:scale(0.94);}
   .field{display:flex; flex-direction:column; gap:4px; margin-bottom:12px;}
   .field label{font-size:12px; font-weight:800; color:#6b5a3f;}
   .field input, .field select{
@@ -825,6 +894,48 @@
 </style>
 </head>
 <body>
+
+<div class="overlay" id="walletOverlay">
+  <div class="modal wallet-modal">
+    <div class="wallet-face"><svg viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg">
+        <path d="M20 60 C20 42 34 30 54 30 H146 C166 30 180 42 180 60 V120 C180 138 166 150 146 150 H54 C34 150 20 138 20 120 Z" fill="#C9A030" stroke="#8a6a15" stroke-width="6"/>
+        <path d="M20 60 C20 42 34 30 54 30 H146 C166 30 180 42 180 60 V78 H20 Z" fill="#E8C468" stroke="#8a6a15" stroke-width="6"/>
+        <circle cx="100" cy="78" r="12" fill="#F3E3AE" stroke="#8a6a15" stroke-width="5"/>
+        <circle cx="72" cy="112" r="17" fill="#fff"/>
+        <circle cx="128" cy="112" r="17" fill="#fff"/>
+        <circle cx="75" cy="115" r="8" fill="#2B2620"/>
+        <circle cx="131" cy="115" r="8" fill="#2B2620"/>
+        <circle cx="78" cy="111" r="2.6" fill="#fff"/>
+        <circle cx="134" cy="111" r="2.6" fill="#fff"/>
+        <path d="M84 132 Q100 142 116 132" fill="none" stroke="#5a4310" stroke-width="5" stroke-linecap="round"/>
+        <circle cx="58" cy="126" r="7" fill="#FF9E8A" opacity="0.55"/>
+        <circle cx="142" cy="126" r="7" fill="#FF9E8A" opacity="0.55"/>
+      </svg></div>
+    <div class="wallet-bubble">Привет! Что будем делать?</div>
+    <div class="wallet-choices">
+      <button class="wallet-choice-btn" onclick="walletChoice('income')">💰 Хочу пополнить бюджет</button>
+      <button class="wallet-choice-btn" onclick="walletChoice('spend')">🛍️ Хочу потратить деньги</button>
+      <button class="wallet-choice-btn" onclick="walletChoice('work')">🧵 Я по работе</button>
+    </div>
+    <button class="wallet-close-btn" onclick="closeWalletGreeting()">Просто закрыть</button>
+  </div>
+</div>
+
+<button class="wallet-fab" onclick="openWalletGreeting()" title="Поговорить с кошельком"><svg viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg">
+    <path d="M20 60 C20 42 34 30 54 30 H146 C166 30 180 42 180 60 V120 C180 138 166 150 146 150 H54 C34 150 20 138 20 120 Z" fill="#C9A030" stroke="#8a6a15" stroke-width="6"/>
+    <path d="M20 60 C20 42 34 30 54 30 H146 C166 30 180 42 180 60 V78 H20 Z" fill="#E8C468" stroke="#8a6a15" stroke-width="6"/>
+    <circle cx="100" cy="78" r="12" fill="#F3E3AE" stroke="#8a6a15" stroke-width="5"/>
+    <circle cx="72" cy="112" r="17" fill="#fff"/>
+    <circle cx="128" cy="112" r="17" fill="#fff"/>
+    <circle cx="75" cy="115" r="8" fill="#2B2620"/>
+    <circle cx="131" cy="115" r="8" fill="#2B2620"/>
+    <circle cx="78" cy="111" r="2.6" fill="#fff"/>
+    <circle cx="134" cy="111" r="2.6" fill="#fff"/>
+    <path d="M84 132 Q100 142 116 132" fill="none" stroke="#5a4310" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="58" cy="126" r="7" fill="#FF9E8A" opacity="0.55"/>
+    <circle cx="142" cy="126" r="7" fill="#FF9E8A" opacity="0.55"/>
+  </svg></button>
+
 <div class="wrap">
   <div class="header">
     <h1>🧵 Мои заказы</h1>
@@ -2538,6 +2649,34 @@ function importData(event){
   reader.readAsText(file);
 }
 
+function openWalletGreeting(){
+  document.getElementById('walletOverlay').classList.add('show');
+}
+function closeWalletGreeting(){
+  document.getElementById('walletOverlay').classList.remove('show');
+}
+
+function walletChoice(choice){
+  closeWalletGreeting();
+  if(choice === 'income'){
+    openSections.add('sources');
+    applySectionState();
+    setTimeout(() => {
+      const el = document.getElementById('sourcesContent');
+      if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
+    }, 100);
+  } else if(choice === 'spend'){
+    openModal();
+  } else if(choice === 'work'){
+    openSections.add('sources');
+    applySectionState();
+    setTimeout(() => {
+      const el = document.querySelector('.client-row');
+      if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
+    }, 100);
+  }
+}
+
 suppressSync = true;
 renderSources();
 renderSummary();
@@ -2549,6 +2688,7 @@ renderBoard();
 suppressSync = false;
 
 bootstrapSync();
+setTimeout(openWalletGreeting, 500);
 </script>
 </body>
 </html>
