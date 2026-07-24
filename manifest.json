@@ -1,6 +1,6 @@
 {
-  "name": "Мои заказы",
-  "short_name": "Мои заказы",
+  "name": "Мої замовлення",
+  "short_name": "Мої замовлення",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#3FB6E8",

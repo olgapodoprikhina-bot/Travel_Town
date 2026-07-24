@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uk">
 <head>
 <meta charset="UTF-8">
-<title>Заказы</title>
+<title>Замовлення</title>
 <link rel="manifest" href="manifest.json"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<meta name="apple-mobile-web-app-title" content="Мои заказы"/>
+<meta name="apple-mobile-web-app-title" content="Мої замовлення"/>
 <meta name="theme-color" content="#3FB6E8"/>
 <link rel="apple-touch-icon" href="icon-192.png"/>
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
@@ -398,6 +398,9 @@
   }
   .client-purchase-btn{
     background:var(--coral);
+  }
+  .quick-order-btn{
+    background:var(--grape);
   }
   .client-row .source-add-row button{background:#2E9E96;}
   .client-row .source-add-row input{border-color:rgba(46,158,150,0.35);}
@@ -961,22 +964,25 @@
         <circle cx="58" cy="126" r="7" fill="#FF9E8A" opacity="0.55"/>
         <circle cx="142" cy="126" r="7" fill="#FF9E8A" opacity="0.55"/>
       </svg></div>
-    <div class="wallet-bubble">Привет! Что будем делать?</div>
+    <div class="wallet-bubble">Привіт! Що будемо робити?</div>
     <div class="wallet-choices">
-      <button class="wallet-choice-btn" onclick="walletChoice('income')">💰 Хочу пополнить бюджет</button>
-      <button class="wallet-choice-btn" onclick="walletChoice('spend')">🛍️ Хочу потратить деньги</button>
-      <button class="wallet-choice-btn" onclick="walletChoice('work')">🧵 Я по работе</button>
+      <button class="wallet-choice-btn" onclick="walletChoice('income')">💰 Хочу поповнити бюджет</button>
+      <button class="wallet-choice-btn" onclick="walletChoice('spend')">🛍️ Хочу витратити гроші</button>
+      <button class="wallet-choice-btn" onclick="walletChoice('work')">🧵 Я по роботі</button>
     </div>
-    <button class="wallet-close-btn" onclick="closeWalletGreeting()">Просто закрыть</button>
+    <button class="wallet-close-btn" onclick="closeWalletGreeting()">Просто закрити</button>
   </div>
 </div>
 
 <div class="wallet-fab-wrap" id="walletFabWrap">
   <div class="wallet-hover-menu" id="walletHoverMenu">
-    <button onclick="openWalletGreeting()">💬 Поговорить</button>
-    <button onclick="openWalletProgress()">📊 Узнать прогресс</button>
+    <button onclick="openWalletGreeting()">💬 Поговорити</button>
+    <button onclick="openWalletProgress()">📊 Дізнатись прогрес</button>
+    <button onclick="toggleWalletHoverMenu(); openModal()">📝 Додати замовлення</button>
+    <button onclick="toggleWalletHoverMenu(); openQuickOrderModal()">⚡ Швидке замовлення</button>
+    <button onclick="toggleWalletHoverMenu(); openPurchaseModal()">🛒 Закупівля</button>
   </div>
-  <button class="wallet-fab" onclick="toggleWalletHoverMenu()" title="Кошелёк"><svg viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg">
+  <button class="wallet-fab" onclick="toggleWalletHoverMenu()" title="Гаманець"><svg viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg">
     <path d="M20 60 C20 42 34 30 54 30 H146 C166 30 180 42 180 60 V120 C180 138 166 150 146 150 H54 C34 150 20 138 20 120 Z" fill="#C9A030" stroke="#8a6a15" stroke-width="6"/>
     <path d="M20 60 C20 42 34 30 54 30 H146 C166 30 180 42 180 60 V78 H20 Z" fill="#E8C468" stroke="#8a6a15" stroke-width="6"/>
     <circle cx="100" cy="78" r="12" fill="#F3E3AE" stroke="#8a6a15" stroke-width="5"/>
@@ -994,23 +1000,21 @@
 
 <div class="overlay" id="walletProgressOverlay">
   <div class="modal">
-    <h2>📊 Прогресс</h2>
+    <h2>📊 Прогрес</h2>
     <div id="walletProgressBody"></div>
     <div class="modal-actions">
-      <button class="btn-save" style="width:100%;" onclick="closeWalletProgress()">Понятно</button>
+      <button class="btn-save" style="width:100%;" onclick="closeWalletProgress()">Зрозуміло</button>
     </div>
   </div>
 </div>
 
 <div class="wrap">
   <div class="header">
-    <h1>🧵 Мои заказы</h1>
+    <h1>🧵 Мої замовлення</h1>
     <div class="header-actions">
-      <button class="icon-btn icon-only" onclick="exportData()" title="Скачать резервную копию данных">💾</button>
-      <button class="icon-btn icon-only" onclick="document.getElementById('importFile').click()" title="Загрузить данные из файла">📂</button>
+      <button class="icon-btn icon-only" onclick="exportData()" title="Завантажити резервну копію даних">💾</button>
+      <button class="icon-btn icon-only" onclick="document.getElementById('importFile').click()" title="Завантажити дані з файлу">📂</button>
       <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importData(event)">
-      <button class="add-btn client-purchase-btn" onclick="openPurchaseModal()">🛒 Закупка</button>
-      <button class="add-btn" onclick="openModal()">+ Добавить заказ</button>
     </div>
   </div>
 
@@ -1018,17 +1022,17 @@
     <div>
       <div class="calendar-card">
         <div class="calendar-head">
-          <h2 id="calMonthLabel">Месяц</h2>
+          <h2 id="calMonthLabel">Місяць</h2>
         </div>
         <div class="calendar-weekdays">
-          <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
+          <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Нд</span>
         </div>
         <div class="calendar-grid" id="calendarGrid"></div>
       </div>
 
       <div class="summary-card">
         <div class="section-toggle" onclick="toggleSection('yearly')">
-          <span>📅 Годовой обзор</span>
+          <span>📅 Річний огляд</span>
           <span class="toggle-arrow" id="arrow-yearly">▸</span>
         </div>
         <div id="yearlyContent" class="section-content collapsed">
@@ -1038,7 +1042,7 @@
 
       <div class="sources-card">
         <div class="section-toggle" onclick="toggleSection('sources')">
-          <span>💰 Источники дохода</span>
+          <span>💰 Джерела доходу</span>
           <span class="toggle-arrow" id="arrow-sources">▸</span>
         </div>
         <div id="sourcesContent" class="section-content collapsed">
@@ -1046,11 +1050,11 @@
 
           <div class="client-row">
             <div class="client-row-head">
-              <span>👥 Клиенты (на материалы)</span>
+              <span>👥 Клієнти (на матеріали)</span>
             </div>
             <div class="source-add-row">
-              <input id="fClientAmount" type="text" inputmode="decimal" placeholder="Сумма, грн">
-              <button onclick="addClientIncome()">Приход</button>
+              <input id="fClientAmount" type="text" inputmode="decimal" placeholder="Сума, грн">
+              <button onclick="addClientIncome()">Надходження</button>
             </div>
           </div>
         </div>
@@ -1058,7 +1062,7 @@
 
       <div class="summary-card">
         <div class="section-toggle" onclick="toggleSection('summary')">
-          <span>🔁 Трансфер заказов</span>
+          <span>🔁 Трансфер замовлень</span>
           <span class="toggle-arrow" id="arrow-summary">▸</span>
         </div>
         <div id="summaryContent" class="section-content collapsed">
@@ -1068,7 +1072,7 @@
 
       <div class="summary-card client-summary-card">
         <div class="section-toggle" onclick="toggleSection('purchaseTransfer')">
-          <span>💎 Трансфер закупок</span>
+          <span>💎 Трансфер закупівель</span>
           <span class="toggle-arrow" id="arrow-purchaseTransfer">▸</span>
         </div>
         <div id="purchaseTransferContent" class="section-content collapsed">
@@ -1078,14 +1082,14 @@
 
       <div class="debts-card">
         <div class="section-toggle" onclick="toggleSection('debts')">
-          <span>📋 Мои долги</span>
+          <span>📋 Мої борги</span>
           <span class="debts-total" id="debtsTotal">0 грн</span>
           <span class="toggle-arrow" id="arrow-debts">▸</span>
         </div>
         <div id="debtsContent" class="section-content collapsed">
           <div id="debtsList"></div>
           <div class="debts-add-row">
-            <input id="fDebtName" type="text" placeholder="Название">
+            <input id="fDebtName" type="text" placeholder="Назва">
             <input id="fDebtSum" type="text" inputmode="decimal" placeholder="Сумма">
             <button onclick="addDebt()">+</button>
           </div>
@@ -1095,12 +1099,12 @@
 
     <div>
   <div id="ordersByCategory"></div>
-  <div class="archive-toggle" onclick="toggleArchive()" id="archiveToggle">Архив (0)</div>
+  <div class="archive-toggle" onclick="toggleArchive()" id="archiveToggle">Архів (0)</div>
   <div class="archive-list" id="archiveList"></div>
 
       <div class="board-card">
         <div class="board-head">
-          <h2>🎯 Доска</h2>
+          <h2>🎯 Дошка</h2>
           <div class="counters-col">
             <div class="sum-counter">💰 <span id="totalSumDisplay">0</span> грн</div>
             <div class="sum-counter client-counter">👥 <span id="clientBalanceDisplay">0</span> грн</div>
@@ -1114,61 +1118,61 @@
 
 <div class="overlay" id="overlay">
   <div class="modal">
-    <h2 id="modalTitle">Новый заказ</h2>
+    <h2 id="modalTitle">Нове замовлення</h2>
     <div class="field">
-      <label>Название заказа</label>
-      <input id="fName" placeholder="Например: платье для Полины">
+      <label>Назва замовлення</label>
+      <input id="fName" placeholder="Наприклад: сукня для Поліни">
     </div>
     <div class="field">
-      <label>Для чего</label>
-      <input id="fPurpose" placeholder="Например: соревнования в сентябре">
+      <label>Для чого</label>
+      <input id="fPurpose" placeholder="Наприклад: змагання у вересні">
     </div>
     <div class="field">
-      <label>Сумма, грн</label>
+      <label>Сума, грн</label>
       <input id="fSum" type="text" inputmode="decimal" placeholder="3500">
     </div>
     <div class="field">
-      <label>Категория</label>
+      <label>Категорія</label>
       <select id="fCategory" onchange="toggleDebtSelect()">
         <option value="Константа: Кредит">Константа: Кредит</option>
-        <option value="Константа: Коммуналка">Константа: Коммуналка</option>
-        <option value="Прожиточный минимум">Прожиточный минимум (еда)</option>
-        <option value="Непредвиденные расходы">Непредвиденные расходы</option>
-        <option value="Ну очень надо">Ну очень надо</option>
+        <option value="Константа: Комуналка">Константа: Комуналка</option>
+        <option value="Прожитковий мінімум">Прожитковий мінімум (їжа)</option>
+        <option value="Непередбачені витрати">Непередбачені витрати</option>
+        <option value="Дуже треба">Дуже треба</option>
       </select>
     </div>
     <div class="field">
-      <label>Дата платежа (для фиксированных — обязательно)</label>
+      <label>Дата платежу (для фіксованих — обов'язково)</label>
       <input id="fDate" type="date">
       <div class="quick-date-row">
-        <button type="button" onclick="setQuickDate(-1)">Вчера</button>
-        <button type="button" onclick="setQuickDate(0)">Сегодня</button>
+        <button type="button" onclick="setQuickDate(-1)">Вчора</button>
+        <button type="button" onclick="setQuickDate(0)">Сьогодні</button>
         <button type="button" onclick="setQuickDate(1)">Завтра</button>
       </div>
     </div>
     <div class="field">
       <label style="display:flex; align-items:center; gap:6px; font-weight:800;">
         <input type="checkbox" id="fRecurring" style="width:auto;">
-        Повторяется каждый месяц (пока не закрою)
+        Повторюється щомісяця (поки не закрию)
       </label>
     </div>
     <div class="field">
       <label style="display:flex; align-items:center; gap:6px; font-weight:800;">
         <input type="checkbox" id="fIsDebt" onchange="toggleDebtSelect()" style="width:auto;">
-        Этот заказ — платёж по долгу
+        Це замовлення — платіж за боргом
       </label>
     </div>
     <div class="field" id="debtSelectField" style="display:none;">
-      <label>Какой долг</label>
+      <label>Який борг</label>
       <select id="fDebtLink"></select>
     </div>
     <div class="field" id="debtPrincipalField" style="display:none;">
-      <label>Сколько из этой суммы идёт на тело кредита (остальное — проценты)</label>
-      <input id="fDebtPrincipal" type="text" inputmode="decimal" placeholder="Например: 400 из 550">
+      <label>Скільки з цієї суми йде на тіло кредиту (решта — відсотки)</label>
+      <input id="fDebtPrincipal" type="text" inputmode="decimal" placeholder="Наприклад: 400 з 550">
     </div>
     <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
-      <button class="btn-save" onclick="saveOrder()">Добавить</button>
+      <button class="btn-cancel" onclick="closeModal()">Скасувати</button>
+      <button class="btn-save" onclick="saveOrder()">Додати</button>
     </div>
     <div id="formError" style="color:#B5483D; font-size:12px; font-weight:700; margin-top:8px; display:none;"></div>
   </div>
@@ -1176,71 +1180,105 @@
 
 <div class="overlay" id="payOverlay">
   <div class="modal">
-    <h2 id="payOrderName">Оплатить заказ</h2>
-    <div style="font-size:12.5px; color:#7a7264; font-weight:700; margin-bottom:12px;">Выбери, чем оплачиваешь</div>
+    <h2 id="payOrderName">Оплатити замовлення</h2>
+    <div style="font-size:12.5px; color:#7a7264; font-weight:700; margin-bottom:12px;">Обери, чим оплачуєш</div>
     <div id="payIconGrid" style="display:flex; gap:10px; justify-content:center; margin-bottom:6px;"></div>
     <div class="modal-actions">
-      <button class="btn-cancel" onclick="closePayModal()">Отмена</button>
+      <button class="btn-cancel" onclick="closePayModal()">Скасувати</button>
     </div>
   </div>
 </div>
 
 <div class="overlay" id="purchaseOverlay">
   <div class="modal">
-    <h2>Закупка материалов</h2>
+    <h2>Закупівля матеріалів</h2>
     <div id="purchaseFormStep">
       <div id="purchaseAvailable" style="font-size:12px; font-weight:800; color:#1E6E67; background:#EAF1F0; padding:7px 10px; border-radius:10px; margin-bottom:12px;"></div>
       <div class="field">
-        <label>Категория</label>
+        <label>Категорія</label>
         <select id="fPurchaseCategory">
-          <option value="Ткань">Ткань</option>
-          <option value="Стразы">Стразы</option>
-          <option value="Расходный материал">Расходный материал</option>
-          <option value="Краска">Краска</option>
+          <option value="Тканина">Тканина</option>
+          <option value="Стрази">Стрази</option>
+          <option value="Витратний матеріал">Витратний матеріал</option>
+          <option value="Фарба">Фарба</option>
         </select>
       </div>
       <div class="field">
-        <label>Сумма, грн</label>
-        <input id="fPurchaseAmount" type="text" inputmode="decimal" placeholder="Например: 350">
+        <label>Сума, грн</label>
+        <input id="fPurchaseAmount" type="text" inputmode="decimal" placeholder="Наприклад: 350">
       </div>
       <div class="modal-actions">
-        <button class="btn-cancel" onclick="closePurchaseModal()">Отмена</button>
-        <button class="btn-save" onclick="proceedToPurchasePicker()">Списать</button>
+        <button class="btn-cancel" onclick="closePurchaseModal()">Скасувати</button>
+        <button class="btn-save" onclick="proceedToPurchasePicker()">Списати</button>
       </div>
       <div id="purchaseError" style="color:#B5483D; font-size:12px; font-weight:700; margin-top:8px; display:none;"></div>
     </div>
     <div id="purchasePickerStep" style="display:none;">
-      <div style="font-size:12.5px; color:#7a7264; font-weight:700; margin-bottom:12px;">Выбери, из какого кристаллика списать</div>
+      <div style="font-size:12.5px; color:#7a7264; font-weight:700; margin-bottom:12px;">Обери, з якого кристалика списати</div>
       <div id="purchaseIconGrid" style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:6px;"></div>
       <div class="modal-actions">
-        <button class="btn-cancel" onclick="closePurchaseModal()">Отмена</button>
+        <button class="btn-cancel" onclick="closePurchaseModal()">Скасувати</button>
       </div>
     </div>
+  </div>
+</div>
+
+<div class="overlay" id="quickOrderOverlay">
+  <div class="modal">
+    <h2>⚡ Швидке замовлення</h2>
+    <div class="field">
+      <label>Категорія</label>
+      <select id="fQuickCategory">
+        <option value="Непередбачені витрати" selected>Непередбачені витрати</option>
+        <option value="Дуже треба">Дуже треба</option>
+        <option value="Прожитковий мінімум">Прожитковий мінімум (їжа)</option>
+        <option value="Константа: Кредит">Константа: Кредит</option>
+        <option value="Константа: Комуналка">Константа: Комуналка</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Сума, грн</label>
+      <input id="fQuickSum" type="text" inputmode="decimal" placeholder="Наприклад: 500">
+    </div>
+    <div class="field">
+      <label>Дата</label>
+      <input id="fQuickDate" type="date">
+      <div class="quick-date-row">
+        <button type="button" onclick="setQuickOrderDate(-1)">Вчора</button>
+        <button type="button" onclick="setQuickOrderDate(0)">Сьогодні</button>
+        <button type="button" onclick="setQuickOrderDate(1)">Завтра</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeQuickOrderModal()">Скасувати</button>
+      <button class="btn-save" onclick="confirmQuickOrder()">Додати</button>
+    </div>
+    <div id="quickOrderError" style="color:#B5483D; font-size:12px; font-weight:700; margin-top:8px; display:none;"></div>
   </div>
 </div>
 
 <div class="overlay" id="jarOverlay">
   <div class="modal">
     <h2>🫙 Заначка</h2>
-    <div style="font-size:12px; font-weight:800; color:#7A5300; background:#FFF3D6; padding:7px 10px; border-radius:10px; margin-bottom:12px;">В заначке сейчас: <span id="jarCurrentBalance">0</span> грн</div>
+    <div style="font-size:12px; font-weight:800; color:#7A5300; background:#FFF3D6; padding:7px 10px; border-radius:10px; margin-bottom:12px;">У заначці зараз: <span id="jarCurrentBalance">0</span> грн</div>
 
     <div id="jarChoiceStep">
-      <div style="font-size:13.5px; font-weight:800; color:#4a3d2e; margin-bottom:14px; text-align:center;">Что ты хочешь сделать?</div>
+      <div style="font-size:13.5px; font-weight:800; color:#4a3d2e; margin-bottom:14px; text-align:center;">Що ти хочеш зробити?</div>
       <div class="modal-actions" style="margin-top:0;">
-        <button class="btn-save" onclick="showJarStep('jarFormStep')">Положить</button>
-        <button class="btn-cancel" onclick="startJarWithdraw()">Забрать</button>
+        <button class="btn-save" onclick="showJarStep('jarFormStep')">Покласти</button>
+        <button class="btn-cancel" onclick="startJarWithdraw()">Забрати</button>
       </div>
       <div class="modal-actions">
-        <button class="btn-cancel" onclick="closeJarModal()" style="width:100%;">Закрыть</button>
+        <button class="btn-cancel" onclick="closeJarModal()" style="width:100%;">Закрити</button>
       </div>
     </div>
 
     <div id="jarFormStep" style="display:none;">
-      <div style="font-size:12.5px; color:#7a7264; font-weight:700; margin-bottom:10px;">Выбери, откуда переводишь</div>
+      <div style="font-size:12.5px; color:#7a7264; font-weight:700; margin-bottom:10px;">Обери, звідки переводиш</div>
       <div id="jarSourceGrid" style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:12px;"></div>
       <div class="field" id="jarAmountField" style="display:none;">
-        <label>Сколько перевести в заначку</label>
-        <input id="fJarAmount" type="text" inputmode="decimal" placeholder="Сумма, грн">
+        <label>Скільки перевести в заначку</label>
+        <input id="fJarAmount" type="text" inputmode="decimal" placeholder="Сума, грн">
       </div>
       <div class="modal-actions">
         <button class="btn-cancel" onclick="showJarStep('jarChoiceStep')">Назад</button>
@@ -1250,44 +1288,44 @@
     </div>
 
     <div id="jarWithdrawQ1Step" style="display:none;">
-      <div style="font-size:13.5px; font-weight:800; color:#4a3d2e; margin-bottom:14px; text-align:center;">Ты точно хочешь взять деньги?</div>
+      <div style="font-size:13.5px; font-weight:800; color:#4a3d2e; margin-bottom:14px; text-align:center;">Ти точно хочеш взяти гроші?</div>
       <div class="modal-actions" style="margin-top:0;">
-        <button class="btn-save" onclick="showJarStep('jarWithdrawQ2Step')">Да</button>
-        <button class="btn-cancel" onclick="showJarStep('jarWithdrawDeclineStep')">Нет</button>
+        <button class="btn-save" onclick="showJarStep('jarWithdrawQ2Step')">Так</button>
+        <button class="btn-cancel" onclick="showJarStep('jarWithdrawDeclineStep')">Ні</button>
       </div>
     </div>
 
     <div id="jarWithdrawQ2Step" style="display:none;">
-      <div style="font-size:13.5px; font-weight:800; color:#4a3d2e; margin-bottom:14px; text-align:center;">А это тебе сейчас очень необходимо?</div>
+      <div style="font-size:13.5px; font-weight:800; color:#4a3d2e; margin-bottom:14px; text-align:center;">А це тобі зараз дуже потрібно?</div>
       <div class="modal-actions" style="margin-top:0;">
-        <button class="btn-save" onclick="showJarStep('jarWithdrawQ3Step')">Да</button>
-        <button class="btn-cancel" onclick="showJarStep('jarWithdrawDeclineStep')">Нет</button>
+        <button class="btn-save" onclick="showJarStep('jarWithdrawQ3Step')">Так</button>
+        <button class="btn-cancel" onclick="showJarStep('jarWithdrawDeclineStep')">Ні</button>
       </div>
     </div>
 
     <div id="jarWithdrawQ3Step" style="display:none;">
-      <div style="font-size:13.5px; font-weight:800; color:#4a3d2e; margin-bottom:14px; text-align:center;">Это жизненно важно или для развлечения?</div>
+      <div style="font-size:13.5px; font-weight:800; color:#4a3d2e; margin-bottom:14px; text-align:center;">Це життєво важливо чи для розваги?</div>
       <div class="modal-actions" style="margin-top:0;">
-        <button class="btn-save" onclick="showJarStep('jarWithdrawAmountStep')">Жизненно важно</button>
-        <button class="btn-cancel" onclick="showJarStep('jarWithdrawDeclineStep')">Для развлечения</button>
+        <button class="btn-save" onclick="showJarStep('jarWithdrawAmountStep')">Життєво важливо</button>
+        <button class="btn-cancel" onclick="showJarStep('jarWithdrawDeclineStep')">Для розваги</button>
       </div>
     </div>
 
     <div id="jarWithdrawDeclineStep" style="display:none;">
-      <div style="font-size:13.5px; font-weight:700; color:#4a3d2e; margin-bottom:14px; text-align:center; line-height:1.5;">Наверное, пусть деньги останутся у меня 🙂</div>
+      <div style="font-size:13.5px; font-weight:700; color:#4a3d2e; margin-bottom:14px; text-align:center; line-height:1.5;">Мабуть, нехай гроші залишаться у мене 🙂</div>
       <div class="modal-actions" style="margin-top:0;">
-        <button class="btn-save" style="width:100%;" onclick="closeJarModal()">Хорошо</button>
+        <button class="btn-save" style="width:100%;" onclick="closeJarModal()">Добре</button>
       </div>
     </div>
 
     <div id="jarWithdrawAmountStep" style="display:none;">
       <div class="field">
-        <label>Сколько забрать из заначки (не больше остатка)</label>
-        <input id="fJarWithdrawAmount" type="text" inputmode="decimal" placeholder="Сумма, грн">
+        <label>Скільки забрати із заначки (не більше залишку)</label>
+        <input id="fJarWithdrawAmount" type="text" inputmode="decimal" placeholder="Сума, грн">
       </div>
       <div class="modal-actions">
         <button class="btn-cancel" onclick="showJarStep('jarChoiceStep')">Назад</button>
-        <button class="btn-save" onclick="confirmJarWithdraw()">Забрать</button>
+        <button class="btn-save" onclick="confirmJarWithdraw()">Забрати</button>
       </div>
       <div id="jarWithdrawError" style="color:#B5483D; font-size:12px; font-weight:700; margin-top:8px; display:none;"></div>
     </div>
@@ -1297,14 +1335,14 @@
 <div class="overlay" id="jar10Overlay">
   <div class="modal">
     <h2>🫙 Банка 10%</h2>
-    <div style="font-size:12px; font-weight:800; color:#2E6B3A; background:#E4F5E0; padding:7px 10px; border-radius:10px; margin-bottom:12px;">В банке сейчас: <span id="jar10CurrentBalance">0</span> грн · вывести отсюда нельзя</div>
+    <div style="font-size:12px; font-weight:800; color:#2E6B3A; background:#E4F5E0; padding:7px 10px; border-radius:10px; margin-bottom:12px;">У банці зараз: <span id="jar10CurrentBalance">0</span> грн · вивести звідси не можна</div>
     <div id="jar10FormStep">
-      <div style="font-size:12.5px; color:#7a7264; font-weight:700; margin-bottom:10px;">С какой суммы отчислить 10%</div>
+      <div style="font-size:12.5px; color:#7a7264; font-weight:700; margin-bottom:10px;">З якої суми відрахувати 10%</div>
       <div id="jar10SourceGrid" style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:12px;"></div>
       <div id="jar10Preview" style="display:none; font-size:13px; font-weight:800; color:#2E6B3A; text-align:center; margin-bottom:10px;"></div>
       <div class="modal-actions">
-        <button class="btn-cancel" onclick="closeJar10Modal()">Отмена</button>
-        <button class="btn-save" id="jar10ConfirmBtn" style="display:none;" onclick="confirmJar10Transfer()">Пополнить на 10%</button>
+        <button class="btn-cancel" onclick="closeJar10Modal()">Скасувати</button>
+        <button class="btn-save" id="jar10ConfirmBtn" style="display:none;" onclick="confirmJar10Transfer()">Поповнити на 10%</button>
       </div>
       <div id="jar10Error" style="color:#B5483D; font-size:12px; font-weight:700; margin-top:8px; display:none;"></div>
     </div>
@@ -1322,14 +1360,14 @@ let idCounter = 1;
 
 const ORDER_ICONS = {
   'Константа: Кредит': ['📄','🧾','🏦'],
-  'Константа: Коммуналка': ['💡','🧾','🏠'],
-  'Прожиточный минимум': ['🥕','🍞','🛒'],
-  'Непредвиденные расходы': ['⚡','🔧','🚨'],
-  'Ну очень надо': ['💝','🎁','💎']
+  'Константа: Комуналка': ['💡','🧾','🏠'],
+  'Прожитковий мінімум': ['🥕','🍞','🛒'],
+  'Непередбачені витрати': ['⚡','🔧','🚨'],
+  'Дуже треба': ['💝','🎁','💎']
 };
 let sources = [
-  {id:'s1', name:'Пошив костюмов', category:'Пошив костюмов', clicks:0},
-  {id:'s2', name:'От Провидения', category:'От Провидения', clicks:0}
+  {id:'s1', name:'Пошиття костюмів', category:'Пошиття костюмів', clicks:0},
+  {id:'s2', name:'Від Провидіння', category:'Від Провидіння', clicks:0}
 ];
 let sourceIdCounter = 3;
 
@@ -1337,9 +1375,9 @@ let debts = [];
 let debtIdCounter = 1;
 
 const SOURCE_ICONS = {
-  'Пошив костюмов': ['🪡','🧵','✂️'],
-  'От Провидения': ['🍬','🍭','🍰'],
-  'Клиенты': ['💎','💎','💎'] // same icon at every tier — value grows, look never changes
+  'Пошиття костюмів': ['🪡','🧵','✂️'],
+  'Від Провидіння': ['🍬','🍭','🍰'],
+  'Клієнти': ['💎','💎','💎'] // same icon at every tier — value grows, look never changes
 };
 
 function tierForAmount(amt){
@@ -1397,8 +1435,8 @@ const MANNEQUIN_SVG = `<svg viewBox="0 0 100 150" width="26" height="26" style="
 </svg>`;
 
 const ASSEMBLY = {
-  'От Провидения': {maxPieces: 6, finalIcon: '🎂'},
-  'Пошив костюмов': {maxPieces: 6, finalIcon: MANNEQUIN_SVG}
+  'Від Провидіння': {maxPieces: 6, finalIcon: '🎂'},
+  'Пошиття костюмів': {maxPieces: 6, finalIcon: MANNEQUIN_SVG}
 };
 
 // merge rule: two items of the same category and same tier combine into the next tier of that category
@@ -1430,10 +1468,10 @@ function tryMerge(a, b){
 
 const CAT_COLORS = {
   'Константа: Кредит':'#1E8FC4',
-  'Константа: Коммуналка':'#2E9E96',
-  'Прожиточный минимум':'#5FCB7A',
-  'Непредвиденные расходы':'#FF6F61',
-  'Ну очень надо':'#FFC93C'
+  'Константа: Комуналка':'#2E9E96',
+  'Прожитковий мінімум':'#5FCB7A',
+  'Непередбачені витрати':'#FF6F61',
+  'Дуже треба':'#FFC93C'
 };
 
 let editingOrderId = null;
@@ -1441,11 +1479,11 @@ let editingOrderId = null;
 function openModal(){
   const sel = document.getElementById('fDebtLink');
   if(debts.length === 0){
-    sel.innerHTML = '<option value="">Нет добавленных долгов</option>';
+    sel.innerHTML = '<option value="">Немає доданих боргів</option>';
   } else {
-    sel.innerHTML = debts.map(d => `<option value="${d.id}">${escapeHtml(d.name)} (${d.sum.toLocaleString('ru-RU')} грн)</option>`).join('');
+    sel.innerHTML = debts.map(d => `<option value="${d.id}">${escapeHtml(d.name)} (${d.sum.toLocaleString('uk-UA')} грн)</option>`).join('');
   }
-  document.getElementById('modalTitle').textContent = 'Новый заказ';
+  document.getElementById('modalTitle').textContent = 'Нове замовлення';
   document.getElementById('overlay').classList.add('show');
 }
 
@@ -1456,9 +1494,9 @@ function editOrder(id){
 
   const sel = document.getElementById('fDebtLink');
   if(debts.length === 0){
-    sel.innerHTML = '<option value="">Нет добавленных долгов</option>';
+    sel.innerHTML = '<option value="">Немає доданих боргів</option>';
   } else {
-    sel.innerHTML = debts.map(d => `<option value="${d.id}">${escapeHtml(d.name)} (${d.sum.toLocaleString('ru-RU')} грн)</option>`).join('');
+    sel.innerHTML = debts.map(d => `<option value="${d.id}">${escapeHtml(d.name)} (${d.sum.toLocaleString('uk-UA')} грн)</option>`).join('');
   }
 
   document.getElementById('fName').value = o.name;
@@ -1472,7 +1510,7 @@ function editOrder(id){
   if(o.debtId) sel.value = o.debtId;
   document.getElementById('fDebtPrincipal').value = o.debtPrincipal || '';
 
-  document.getElementById('modalTitle').textContent = 'Изменить заказ';
+  document.getElementById('modalTitle').textContent = 'Змінити замовлення';
   document.getElementById('overlay').classList.add('show');
 }
 
@@ -1512,22 +1550,22 @@ function saveOrder(){
   const errEl = document.getElementById('formError');
 
   if(!name || !sum || sum<=0){
-    errEl.textContent = !name ? 'Впиши название заказа' : 'Впиши корректную сумму';
+    errEl.textContent = !name ? 'Впиши назву замовлення' : 'Впиши правильну суму';
     errEl.style.display = 'block';
     return;
   }
-  if((category === 'Константа: Кредит' || category === 'Константа: Коммуналка') && !dueDate){
-    errEl.textContent = 'Для константы нужна дата платежа';
+  if((category === 'Константа: Кредит' || category === 'Константа: Комуналка') && !dueDate){
+    errEl.textContent = 'Для константи потрібна дата платежу';
     errEl.style.display = 'block';
     return;
   }
   if(isDebt && !debtId){
-    errEl.textContent = 'Выбери долг из списка';
+    errEl.textContent = 'Обери борг зі списку';
     errEl.style.display = 'block';
     return;
   }
   if(isDebt && isCredit && (!debtPrincipal || debtPrincipal <= 0 || debtPrincipal > sum)){
-    errEl.textContent = 'Впиши сумму на тело кредита (не больше общей суммы платежа)';
+    errEl.textContent = 'Впиши суму на тіло кредиту (не більше загальної суми платежу)';
     errEl.style.display = 'block';
     return;
   }
@@ -1553,23 +1591,23 @@ function payOrder(id){
   payingOrderId = id;
   const order = orders.find(o => o.id === id);
   if(!order) return;
-  document.getElementById('payOrderName').textContent = 'Оплатить: ' + order.name;
+  document.getElementById('payOrderName').textContent = 'Оплатити: ' + order.name;
 
   const grid = document.getElementById('payIconGrid');
   const usableIndexes = boardCells
-    .map((c, i) => (c && c.category !== 'Клиенты' && c.value >= order.sum) ? i : null)
+    .map((c, i) => (c && c.category !== 'Клієнти' && c.value >= order.sum) ? i : null)
     .filter(i => i !== null);
 
   if(usableIndexes.length === 0){
-    const hasAny = boardCells.some(c => c !== null && c.category !== 'Клиенты');
+    const hasAny = boardCells.some(c => c !== null && c.category !== 'Клієнти');
     grid.innerHTML = hasAny
-      ? `<div style="font-size:12.5px; color:#8a7264;">Ни в одной иконке не хватает суммы (нужно ${order.sum.toLocaleString('ru-RU')} грн) — накопи ещё или объедини иконки слиянием.</div>`
-      : '<div style="font-size:12.5px; color:#8a7264;">На доске пока нет иконок для оплаты (деньги клиентов сюда не считаются).</div>';
+      ? `<div style="font-size:12.5px; color:#8a7264;">Жодній іконці не вистачає суми (потрібно ${order.sum.toLocaleString('uk-UA')} грн) — накопич ще або об'єднай іконки злиттям.</div>`
+      : '<div style="font-size:12.5px; color:#8a7264;">На дошці поки немає іконок для оплати (гроші клієнтів сюди не рахуються).</div>';
   } else {
     grid.innerHTML = usableIndexes.map(i => `
       <div class="icon-choice" onclick="confirmPay(${i})" style="flex-direction:column; gap:2px;">
         <div>${boardCells[i].icon}</div>
-        <div style="font-size:9px; font-weight:800; color:#8a7264;">${boardCells[i].value.toLocaleString('ru-RU')}</div>
+        <div style="font-size:9px; font-weight:800; color:#8a7264;">${boardCells[i].value.toLocaleString('uk-UA')}</div>
       </div>
     `).join('');
   }
@@ -1626,16 +1664,16 @@ function toggleArchive(){
 }
 
 function renderArchive(){
-  document.getElementById('archiveToggle').textContent = `Архив (${archivedOrders.length})`;
+  document.getElementById('archiveToggle').textContent = `Архів (${archivedOrders.length})`;
   const list = document.getElementById('archiveList');
   if(archivedOrders.length === 0){
-    list.innerHTML = '<div style="color:#8a7264;">Пока пусто.</div>';
+    list.innerHTML = '<div style="color:#8a7264;">Поки порожньо.</div>';
     return;
   }
   list.innerHTML = archivedOrders.slice().reverse().map(o => `
     <div class="archive-item">
-      <span>${escapeHtml(o.name)}${o.escalated ? ' <small style="color:#B5483D;">(включено в долг, не оплачено)</small>' : ''}</span>
-      <span>${o.sum.toLocaleString('ru-RU')} грн</span>
+      <span>${escapeHtml(o.name)}${o.escalated ? ' <small style="color:#B5483D;">(включено в борг, не сплачено)</small>' : ''}</span>
+      <span>${o.sum.toLocaleString('uk-UA')} грн</span>
     </div>
   `).join('');
 }
@@ -1709,7 +1747,7 @@ function handleCellClick(idx){
 function renderSources(){
   const list = document.getElementById('sourcesList');
   if(sources.length === 0){
-    list.innerHTML = '<div class="empty-orders" style="color:#8a7264; padding:4px 0;">Пока нет источников.</div>';
+    list.innerHTML = '<div class="empty-orders" style="color:#8a7264; padding:4px 0;">Поки немає джерел.</div>';
     return;
   }
   list.innerHTML = sources.map(s => {
@@ -1721,8 +1759,8 @@ function renderSources(){
       </div>
       <div class="tier-ref">${icons[0]} <small>1–500</small> · ${icons[1]} <small>501–1000</small> · ${icons[2]} <small>1001+</small></div>
       <div class="source-add-row">
-        <input id="amt-${s.id}" type="text" inputmode="decimal" placeholder="Сумма, грн" onkeydown="if(event.key==='Enter'){placeFromSource('${s.id}')}">
-        <button onclick="placeFromSource('${s.id}')">Добавить</button>
+        <input id="amt-${s.id}" type="text" inputmode="decimal" placeholder="Сума, грн" onkeydown="if(event.key==='Enter'){placeFromSource('${s.id}')}">
+        <button onclick="placeFromSource('${s.id}')">Додати</button>
       </div>
     </div>
   `;
@@ -1751,17 +1789,17 @@ function renderDebts(){
   const list = document.getElementById('debtsList');
   const totalEl = document.getElementById('debtsTotal');
   const total = debts.reduce((sum, d) => sum + d.sum, 0);
-  totalEl.textContent = total.toLocaleString('ru-RU') + ' грн';
+  totalEl.textContent = total.toLocaleString('uk-UA') + ' грн';
 
   if(debts.length === 0){
-    list.innerHTML = '<div class="debts-empty">Пока пусто — добавь долг ниже.</div>';
+    list.innerHTML = '<div class="debts-empty">Поки порожньо — додай борг нижче.</div>';
     scheduleSync();
     return;
   }
   list.innerHTML = debts.map(d => `
     <div class="debt-row">
       <span class="d-name">${escapeHtml(d.name)}</span>
-      <span class="d-sum">${d.sum.toLocaleString('ru-RU')}</span>
+      <span class="d-sum">${d.sum.toLocaleString('uk-UA')}</span>
       <button class="d-del" onclick="deleteDebt(${d.id})">✕</button>
     </div>
   `).join('');
@@ -1777,13 +1815,13 @@ function daysLeftLabel(dueDate, category){
   const isConstant = CONSTANT_CATEGORIES.includes(category);
 
   if(diffDays > 0){
-    return `<div class="due-badge due-ok">Осталось: ${diffDays} дн.</div>`;
+    return `<div class="due-badge due-ok">Залишилось: ${diffDays} дн.</div>`;
   } else if(diffDays === 0){
     return isConstant
-      ? `<div class="due-badge due-today">Сегодня срок!</div>`
+      ? `<div class="due-badge due-today">Сьогодні строк!</div>`
       : `<div class="due-badge due-ok">Актуально</div>`;
   } else {
-    return `<div class="due-badge due-overdue">Просрочено: ${Math.abs(diffDays)} дн.</div>`;
+    return `<div class="due-badge due-overdue">Прострочено: ${Math.abs(diffDays)} дн.</div>`;
   }
 }
 
@@ -1794,6 +1832,56 @@ function setQuickDate(offsetDays){
   const m = String(d.getMonth()+1).padStart(2,'0');
   const day = String(d.getDate()).padStart(2,'0');
   document.getElementById('fDate').value = `${y}-${m}-${day}`;
+}
+
+function setQuickOrderDate(offsetDays){
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  document.getElementById('fQuickDate').value = `${y}-${m}-${day}`;
+}
+
+function openQuickOrderModal(){
+  document.getElementById('fQuickSum').value = '';
+  document.getElementById('fQuickDate').value = '';
+  document.getElementById('fQuickCategory').value = 'Непередбачені витрати';
+  document.getElementById('quickOrderError').style.display = 'none';
+  setQuickOrderDate(0); // defaults to today
+  document.getElementById('quickOrderOverlay').classList.add('show');
+}
+function closeQuickOrderModal(){
+  document.getElementById('quickOrderOverlay').classList.remove('show');
+}
+
+function confirmQuickOrder(){
+  const category = document.getElementById('fQuickCategory').value;
+  const sum = parseFloat(document.getElementById('fQuickSum').value.replace(',', '.'));
+  const dueDate = document.getElementById('fQuickDate').value;
+  const errEl = document.getElementById('quickOrderError');
+
+  if(!sum || sum <= 0){
+    errEl.textContent = 'Впиши суму';
+    errEl.style.display = 'block';
+    return;
+  }
+  if(!dueDate){
+    errEl.textContent = 'Обери дату';
+    errEl.style.display = 'block';
+    return;
+  }
+  errEl.style.display = 'none';
+
+  const newId = idCounter++;
+  orders.push({
+    id: newId, templateId: newId,
+    name: '⚡ ' + category, purpose: '', sum, category,
+    dueDate, debtId: null, debtPrincipal: null, recurring: false, escalated: false
+  });
+
+  closeQuickOrderModal();
+  renderOrders();
 }
 
 function todayStr(){
@@ -1808,11 +1896,11 @@ function addClientIncome(){
 
   const emptyIdx = findEmptyBoardIndex();
   if(emptyIdx !== -1){
-    boardCells[emptyIdx] = {icon: tierIcon('Клиенты', amount), category:'Клиенты', value:amount, pieces:1};
+    boardCells[emptyIdx] = {icon: tierIcon('Клієнти', amount), category:'Клієнти', value:amount, pieces:1};
     renderBoard();
   }
 
-  clientTx.push({id: clientTxIdCounter++, type:'income', label:'Приход от клиента', amount, date: todayStr()});
+  clientTx.push({id: clientTxIdCounter++, type:'income', label:'Надходження від клієнта', amount, date: todayStr()});
   amountInput.value = '';
   renderClientFunds();
 }
@@ -1826,14 +1914,14 @@ function openPurchaseModal(){
   document.getElementById('purchaseFormStep').style.display = 'block';
   document.getElementById('purchasePickerStep').style.display = 'none';
 
-  const clientItems = boardCells.filter(c => c && c.category === 'Клиенты');
+  const clientItems = boardCells.filter(c => c && c.category === 'Клієнти');
   const availEl = document.getElementById('purchaseAvailable');
   if(clientItems.length === 0){
-    availEl.textContent = '💎 Пока нет денег от клиентов на доске — сначала добавь приход.';
+    availEl.textContent = '💎 Поки немає грошей від клієнтів на дошці — спочатку додай надходження.';
   } else {
     const total = clientItems.reduce((s,c) => s + c.value, 0);
-    const pieces = clientItems.map(c => c.value.toLocaleString('ru-RU')).join(', ');
-    availEl.textContent = `💎 Доступно: ${total.toLocaleString('ru-RU')} грн (кристаллики: ${pieces})`;
+    const pieces = clientItems.map(c => c.value.toLocaleString('uk-UA')).join(', ');
+    availEl.textContent = `💎 Доступно: ${total.toLocaleString('uk-UA')} грн (кристалики: ${pieces})`;
   }
 
   document.getElementById('purchaseOverlay').classList.add('show');
@@ -1849,26 +1937,26 @@ function proceedToPurchasePicker(){
   const amount = parseFloat(document.getElementById('fPurchaseAmount').value.replace(',', '.'));
   const errEl = document.getElementById('purchaseError');
   if(!amount || amount <= 0){
-    errEl.textContent = 'Впиши корректную сумму';
+    errEl.textContent = 'Впиши правильну суму';
     errEl.style.display = 'block';
     return;
   }
 
   const usableIndexes = boardCells
-    .map((c, i) => (c && c.category === 'Клиенты' && c.value >= amount) ? i : null)
+    .map((c, i) => (c && c.category === 'Клієнти' && c.value >= amount) ? i : null)
     .filter(i => i !== null);
 
   const grid = document.getElementById('purchaseIconGrid');
   if(usableIndexes.length === 0){
-    const hasAny = boardCells.some(c => c && c.category === 'Клиенты');
+    const hasAny = boardCells.some(c => c && c.category === 'Клієнти');
     grid.innerHTML = hasAny
-      ? `<div style="font-size:12.5px; color:#8a7264;">Ни в одном кристаллике не хватает суммы (нужно ${amount.toLocaleString('ru-RU')} грн) — объедини кристаллики слиянием или добавь ещё приход.</div>`
-      : '<div style="font-size:12.5px; color:#8a7264;">Пока нет денег от клиентов на доске.</div>';
+      ? `<div style="font-size:12.5px; color:#8a7264;">Жодному кристалику не вистачає суми (потрібно ${amount.toLocaleString('uk-UA')} грн) — об'єднай кристалики злиттям або додай ще надходження.</div>`
+      : '<div style="font-size:12.5px; color:#8a7264;">Поки немає грошей від клієнтів на дошці.</div>';
   } else {
     grid.innerHTML = usableIndexes.map(i => `
       <div class="icon-choice" onclick="finalizePurchase(${i})" style="flex-direction:column; gap:2px;">
         <div>${boardCells[i].icon}</div>
-        <div style="font-size:9px; font-weight:800; color:#8a7264;">${boardCells[i].value.toLocaleString('ru-RU')}</div>
+        <div style="font-size:9px; font-weight:800; color:#8a7264;">${boardCells[i].value.toLocaleString('uk-UA')}</div>
       </div>
     `).join('');
   }
@@ -1890,7 +1978,7 @@ function showJarStep(stepId){
 }
 
 function openJarModal(){
-  document.getElementById('jarCurrentBalance').textContent = jarBalance.toLocaleString('ru-RU');
+  document.getElementById('jarCurrentBalance').textContent = jarBalance.toLocaleString('uk-UA');
   document.getElementById('jarError').style.display = 'none';
   document.getElementById('jarWithdrawError').style.display = 'none';
   document.getElementById('jarAmountField').style.display = 'none';
@@ -1900,17 +1988,17 @@ function openJarModal(){
   jarSourceCellIdx = null;
 
   const sourceIndexes = boardCells
-    .map((c, i) => (i !== JAR_INDEX && i !== JAR10_INDEX && c && c.category !== 'Клиенты' && c.category !== 'Банка') ? i : null)
+    .map((c, i) => (i !== JAR_INDEX && i !== JAR10_INDEX && c && c.category !== 'Клієнти' && c.category !== 'Банка') ? i : null)
     .filter(i => i !== null);
 
   const grid = document.getElementById('jarSourceGrid');
   if(sourceIndexes.length === 0){
-    grid.innerHTML = '<div style="font-size:12.5px; color:#8a7264;">На доске пока нет личных доходов, откуда переводить.</div>';
+    grid.innerHTML = '<div style="font-size:12.5px; color:#8a7264;">На дошці поки немає особистих доходів, звідки переводити.</div>';
   } else {
     grid.innerHTML = sourceIndexes.map(i => `
       <div class="icon-choice" onclick="selectJarSource(${i})" id="jar-src-${i}" style="flex-direction:column; gap:2px;">
         <div>${boardCells[i].icon}</div>
-        <div style="font-size:9px; font-weight:800; color:#8a7264;">${boardCells[i].value.toLocaleString('ru-RU')}</div>
+        <div style="font-size:9px; font-weight:800; color:#8a7264;">${boardCells[i].value.toLocaleString('uk-UA')}</div>
       </div>
     `).join('');
   }
@@ -1947,12 +2035,12 @@ function confirmJarTransfer(){
   const amount = parseFloat(document.getElementById('fJarAmount').value.replace(',', '.'));
 
   if(!item){
-    errEl.textContent = 'Выбери, откуда переводить';
+    errEl.textContent = 'Обери, звідки переводити';
     errEl.style.display = 'block';
     return;
   }
   if(!amount || amount <= 0 || amount > item.value){
-    errEl.textContent = 'Впиши сумму не больше, чем есть в выбранной иконке';
+    errEl.textContent = 'Впиши суму не більше, ніж є у вибраній іконці';
     errEl.style.display = 'block';
     return;
   }
@@ -1973,20 +2061,20 @@ function confirmJarWithdraw(){
   const amount = parseFloat(document.getElementById('fJarWithdrawAmount').value.replace(',', '.'));
 
   if(!amount || amount <= 0 || amount > jarBalance){
-    errEl.textContent = 'Впиши сумму не больше, чем есть в заначке';
+    errEl.textContent = 'Впиши суму не більше, ніж є в заначці';
     errEl.style.display = 'block';
     return;
   }
 
   jarBalance -= amount;
 
-  // money comes back onto the board as personal income (От Провидения tier), keeping totalSum == sum(board)
+  // money comes back onto the board as personal income (Від Провидіння tier), keeping totalSum == sum(board)
   const emptyIdx = findEmptyBoardIndex();
   if(emptyIdx !== -1){
-    boardCells[emptyIdx] = {icon: tierIcon('От Провидения', amount), category:'От Провидения', value: amount, pieces:1};
+    boardCells[emptyIdx] = {icon: tierIcon('Від Провидіння', amount), category:'Від Провидіння', value: amount, pieces:1};
   }
   totalSum += amount;
-  incomeLog.push({date: todayStr(), category: 'От Провидения', amount});
+  incomeLog.push({date: todayStr(), category: 'Від Провидіння', amount});
 
   closeJarModal();
   renderBoard();
@@ -1997,24 +2085,24 @@ function confirmJarWithdraw(){
 let jar10SourceCellIdx = null;
 
 function openJar10Modal(){
-  document.getElementById('jar10CurrentBalance').textContent = jar10Balance.toLocaleString('ru-RU');
+  document.getElementById('jar10CurrentBalance').textContent = jar10Balance.toLocaleString('uk-UA');
   document.getElementById('jar10Error').style.display = 'none';
   document.getElementById('jar10Preview').style.display = 'none';
   document.getElementById('jar10ConfirmBtn').style.display = 'none';
   jar10SourceCellIdx = null;
 
   const sourceIndexes = boardCells
-    .map((c, i) => (i !== JAR_INDEX && i !== JAR10_INDEX && c && c.category !== 'Клиенты') ? i : null)
+    .map((c, i) => (i !== JAR_INDEX && i !== JAR10_INDEX && c && c.category !== 'Клієнти') ? i : null)
     .filter(i => i !== null);
 
   const grid = document.getElementById('jar10SourceGrid');
   if(sourceIndexes.length === 0){
-    grid.innerHTML = '<div style="font-size:12.5px; color:#8a7264;">На доске пока нет подходящих иконок.</div>';
+    grid.innerHTML = '<div style="font-size:12.5px; color:#8a7264;">На дошці поки немає відповідних іконок.</div>';
   } else {
     grid.innerHTML = sourceIndexes.map(i => `
       <div class="icon-choice" onclick="selectJar10Source(${i})" id="jar10-src-${i}" style="flex-direction:column; gap:2px;">
         <div>${boardCells[i].icon}</div>
-        <div style="font-size:9px; font-weight:800; color:#8a7264;">${boardCells[i].value.toLocaleString('ru-RU')}</div>
+        <div style="font-size:9px; font-weight:800; color:#8a7264;">${boardCells[i].value.toLocaleString('uk-UA')}</div>
       </div>
     `).join('');
   }
@@ -2031,7 +2119,7 @@ function selectJar10Source(cellIdx){
   const item = boardCells[cellIdx];
   const tenPercent = Math.round(item.value * 0.1 * 100) / 100;
   const previewEl = document.getElementById('jar10Preview');
-  previewEl.textContent = `10% от ${item.value.toLocaleString('ru-RU')} грн = ${tenPercent.toLocaleString('ru-RU')} грн`;
+  previewEl.textContent = `10% от ${item.value.toLocaleString('uk-UA')} грн = ${tenPercent.toLocaleString('uk-UA')} грн`;
   previewEl.style.display = 'block';
   document.getElementById('jar10ConfirmBtn').style.display = 'block';
 }
@@ -2046,7 +2134,7 @@ function confirmJar10Transfer(){
   const item = jar10SourceCellIdx !== null ? boardCells[jar10SourceCellIdx] : null;
 
   if(!item){
-    errEl.textContent = 'Выбери, с какой суммы отчислять';
+    errEl.textContent = 'Обери, з якої суми відраховувати';
     errEl.style.display = 'block';
     return;
   }
@@ -2083,7 +2171,7 @@ function renderClientFunds(){
   const balanceEl = document.getElementById('clientBalanceDisplay');
   if(!balanceEl) return;
   const balance = clientTx.reduce((s,t) => s + (t.type === 'income' ? t.amount : -t.amount), 0);
-  balanceEl.textContent = balance.toLocaleString('ru-RU');
+  balanceEl.textContent = balance.toLocaleString('uk-UA');
   renderPurchaseTransfer();
   scheduleSync();
 }
@@ -2115,19 +2203,19 @@ function renderSummary(){
     .map(cat => `
       <div class="summary-cat-row">
         <span><span class="dot" style="background:${CAT_COLORS[cat]||'#a89a83'}"></span>${escapeHtml(cat)}</span>
-        <span>${byCategory[cat].toLocaleString('ru-RU')} грн</span>
+        <span>${byCategory[cat].toLocaleString('uk-UA')} грн</span>
       </div>
     `).join('');
 
   const expenseOpen = openSections.has('summaryExpense');
   body.innerHTML = `
-    <div class="summary-month">Месяц: текущий (${MONTH_NAMES[m]} ${y})</div>
-    <div class="summary-row total-income"><span>Доход</span><span class="amt">${totalIncome.toLocaleString('ru-RU')} грн</span></div>
+    <div class="summary-month">Місяць: поточний (${MONTH_NAMES[m]} ${y})</div>
+    <div class="summary-row total-income"><span>Дохід</span><span class="amt">${totalIncome.toLocaleString('uk-UA')} грн</span></div>
     <div class="summary-row total-expense summary-row-toggle" onclick="toggleSection('summaryExpense')">
-      <span>Расход <span class="toggle-arrow" style="font-size:9px;">${expenseOpen?'▾':'▸'}</span></span>
-      <span class="amt">${totalExpense.toLocaleString('ru-RU')} грн</span>
+      <span>Витрата <span class="toggle-arrow" style="font-size:9px;">${expenseOpen?'▾':'▸'}</span></span>
+      <span class="amt">${totalExpense.toLocaleString('uk-UA')} грн</span>
     </div>
-    ${expenseOpen ? `<div class="summary-divider"></div>${catRows || '<div class="summary-empty">Пока нет расходов за месяц.</div>'}` : ''}
+    ${expenseOpen ? `<div class="summary-divider"></div>${catRows || '<div class="summary-empty">Поки немає витрат за місяць.</div>'}` : ''}
   `;
   renderYearlyOverview();
 }
@@ -2149,11 +2237,11 @@ function renderPurchaseTransfer(){
   const monthExpense = monthTx.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
   const balance = clientTx.reduce((s,t) => s + (t.type === 'income' ? t.amount : -t.amount), 0);
   const totalTransferred = clientTx
-    .filter(t => t.type === 'expense' && t.label === 'Перевод в личный доход')
+    .filter(t => t.type === 'expense' && t.label === 'Переведення в особистий дохід')
     .reduce((s,t) => s + t.amount, 0);
 
   const byCategory = {};
-  monthTx.filter(t => t.type === 'expense' && t.label !== 'Перевод в личный доход').forEach(t => {
+  monthTx.filter(t => t.type === 'expense' && t.label !== 'Переведення в особистий дохід').forEach(t => {
     byCategory[t.label] = (byCategory[t.label] || 0) + t.amount;
   });
   const catRows = Object.keys(byCategory)
@@ -2161,19 +2249,19 @@ function renderPurchaseTransfer(){
     .map(cat => `
       <div class="summary-cat-row">
         <span><span class="dot" style="background:#2E9E96"></span>${escapeHtml(cat)}</span>
-        <span>${byCategory[cat].toLocaleString('ru-RU')} грн</span>
+        <span>${byCategory[cat].toLocaleString('uk-UA')} грн</span>
       </div>
     `).join('');
 
   body.innerHTML = `
-    <div class="summary-month">Месяц: текущий (${MONTH_NAMES[m]} ${y})</div>
-    <div class="summary-row total-income"><span>Доход</span><span class="amt" style="color:#2E9E96;">${monthIncome.toLocaleString('ru-RU')} грн</span></div>
-    <div class="summary-row total-expense"><span>Расход</span><span class="amt">${monthExpense.toLocaleString('ru-RU')} грн</span></div>
-    <div class="summary-row"><span>Остаток (общий)</span><span class="amt" style="color:#1E6E67; font-weight:800;">${balance.toLocaleString('ru-RU')} грн</span></div>
-    <div class="summary-row"><span>Переведено (общее)</span><span class="amt" style="color:#7a5cb0; font-weight:800;">${totalTransferred.toLocaleString('ru-RU')} грн</span></div>
-    <button class="transfer-to-income-btn" onclick="transferClientBalanceToIncome()" ${balance <= 0 ? 'disabled' : ''}>➜ Перевести в доход от Провидения</button>
+    <div class="summary-month">Місяць: поточний (${MONTH_NAMES[m]} ${y})</div>
+    <div class="summary-row total-income"><span>Дохід</span><span class="amt" style="color:#2E9E96;">${monthIncome.toLocaleString('uk-UA')} грн</span></div>
+    <div class="summary-row total-expense"><span>Витрата</span><span class="amt">${monthExpense.toLocaleString('uk-UA')} грн</span></div>
+    <div class="summary-row"><span>Залишок (загальний)</span><span class="amt" style="color:#1E6E67; font-weight:800;">${balance.toLocaleString('uk-UA')} грн</span></div>
+    <div class="summary-row"><span>Переведено (загальне)</span><span class="amt" style="color:#7a5cb0; font-weight:800;">${totalTransferred.toLocaleString('uk-UA')} грн</span></div>
+    <button class="transfer-to-income-btn" onclick="transferClientBalanceToIncome()" ${balance <= 0 ? 'disabled' : ''}>➜ Перевести в дохід від Провидіння</button>
     <div class="summary-divider"></div>
-    ${catRows || '<div class="summary-empty">Пока нет закупок за месяц.</div>'}
+    ${catRows || '<div class="summary-empty">Поки немає закупівель за місяць.</div>'}
   `;
   renderYearlyOverview();
 }
@@ -2200,16 +2288,16 @@ function renderYearlyOverview(){
   }
 
   function tableHtml(rows){
-    if(rows.length === 0) return '<div class="summary-empty">Пока нет данных.</div>';
+    if(rows.length === 0) return '<div class="summary-empty">Поки немає даних.</div>';
     const rowsHtml = rows.slice().reverse().map(r => `
       <tr>
         <td class="month-name">${MONTH_NAMES[r.m]}</td>
-        <td class="income-cell">${r.inc.toLocaleString('ru-RU')}</td>
-        <td class="expense-cell">${r.exp.toLocaleString('ru-RU')}</td>
+        <td class="income-cell">${r.inc.toLocaleString('uk-UA')}</td>
+        <td class="expense-cell">${r.exp.toLocaleString('uk-UA')}</td>
       </tr>
     `).join('');
     return `<table class="yearly-table">
-      <tr><th>Месяц</th><th>Доход</th><th>Расход</th></tr>
+      <tr><th>Місяць</th><th>Дохід</th><th>Витрата</th></tr>
       ${rowsHtml}
     </table>`;
   }
@@ -2221,9 +2309,9 @@ function renderYearlyOverview(){
   );
 
   body.innerHTML = `
-    <div class="yearly-group-title">🔁 Заказы</div>
+    <div class="yearly-group-title">🔁 Замовлення</div>
     ${tableHtml(ordersRows)}
-    <div class="yearly-group-title">💎 Закупки</div>
+    <div class="yearly-group-title">💎 Закупівлі</div>
     ${tableHtml(purchaseRows)}
   `;
 }
@@ -2233,18 +2321,18 @@ function transferClientBalanceToIncome(){
   if(balance <= 0) return;
 
   // remove the client (crystal) icons from the board — that value is now converted
-  boardCells = boardCells.map(c => (c && c.category === 'Клиенты') ? null : c);
+  boardCells = boardCells.map(c => (c && c.category === 'Клієнти') ? null : c);
 
   // zero out the client ledger transparently (shows up as a labeled expense in history)
-  clientTx.push({id: clientTxIdCounter++, type:'expense', label:'Перевод в личный доход', amount: balance, date: todayStr()});
+  clientTx.push({id: clientTxIdCounter++, type:'expense', label:'Переведення в особистий дохід', amount: balance, date: todayStr()});
 
-  // add to personal income under От Провидения
+  // add to personal income under Від Провидіння
   const emptyIdx = findEmptyBoardIndex();
   if(emptyIdx !== -1){
-    boardCells[emptyIdx] = {icon: tierIcon('От Провидения', balance), category:'От Провидения', value: balance, pieces:1};
+    boardCells[emptyIdx] = {icon: tierIcon('Від Провидіння', balance), category:'Від Провидіння', value: balance, pieces:1};
   }
   totalSum += balance;
-  incomeLog.push({date: todayStr(), category: 'От Провидения', amount: balance});
+  incomeLog.push({date: todayStr(), category: 'Від Провидіння', amount: balance});
 
   renderBoard();
   renderSources();
@@ -2274,7 +2362,7 @@ function isPastBillingMonth(dueDate){
 // Stage 2 (the billing month has actually ended and it's still unpaid): NOW it gets added to the linked debt.
 function escalateOverdueUtilities(){
   orders.forEach(o => {
-    if(o.category !== 'Константа: Коммуналка') return;
+    if(o.category !== 'Константа: Комуналка') return;
     if(!o.debtId) return;
     if(o.escalated) return;
     if(!o.dueDate || !isPastBillingMonth(o.dueDate)) return;
@@ -2332,16 +2420,16 @@ function renderOrderCard(o){
   return `
     <div class="order-card" style="--cat-color:${CAT_COLORS[o.category]||'#1E8FC4'}">
       <div class="card-controls">
-        <button class="ctrl-btn" onclick="editOrder(${o.id})" title="Изменить">✎</button>
-        <button class="ctrl-btn" onclick="deleteOrderDraft(${o.id})" title="Удалить">✕</button>
+        <button class="ctrl-btn" onclick="editOrder(${o.id})" title="Змінити">✎</button>
+        <button class="ctrl-btn" onclick="deleteOrderDraft(${o.id})" title="Видалити">✕</button>
       </div>
       <div class="name">${escapeHtml(o.name)}</div>
       <div class="purpose">${escapeHtml(o.purpose)}</div>
-      <div class="sum">${o.sum.toLocaleString('ru-RU')} грн</div>
+      <div class="sum">${o.sum.toLocaleString('uk-UA')} грн</div>
       <div class="cat">${escapeHtml(o.category)}</div>
       ${daysLeftLabel(o.dueDate, o.category)}
       ${debtBadge}
-      <button class="pay-btn" onclick="payOrder(${o.id})">✓ Оплатить</button>
+      <button class="pay-btn" onclick="payOrder(${o.id})">✓ Оплатити</button>
     </div>
   `;
 }
@@ -2352,7 +2440,7 @@ function renderOrderCard(o){
 // An unpaid instance from a previous month is NOT replaced or removed — it just keeps
 // counting overdue days (and, for utilities, still escalates into the debt at month-end
 // via escalateOverdueUtilities, unchanged). This only adds this month's copy if missing.
-const RECURRING_CATEGORIES = ['Константа: Кредит', 'Константа: Коммуналка'];
+const RECURRING_CATEGORIES = ['Константа: Кредит', 'Константа: Комуналка'];
 
 function generateRecurringConstantInstances(){
   const today = new Date();
@@ -2394,7 +2482,7 @@ function generateRecurringConstantInstances(){
   });
 }
 
-const CONSTANT_CATEGORIES = ['Константа: Кредит','Константа: Коммуналка'];
+const CONSTANT_CATEGORIES = ['Константа: Кредит','Константа: Комуналка'];
 
 function renderOrders(){
   const container = document.getElementById('ordersByCategory');
@@ -2408,14 +2496,14 @@ function renderOrders(){
   generateRecurringConstantInstances();
 
   if(orders.length === 0){
-    container.innerHTML = '<div class="empty-orders">Пока нет заказов — нажми "Добавить заказ" выше.</div>';
+    container.innerHTML = '<div class="empty-orders">Поки немає замовлень — натисни "Додати замовлення" вище.</div>';
     renderCalendar();
     scheduleSync();
     return;
   }
 
   // Only Кредит/Коммуналка participate in urgency escalation and collapsible grouping.
-  // Every other category always shows in full under "Актуальное", never migrating sections —
+  // Every other category always shows in full under "Актуальне", never migrating sections —
   // it just displays the overdue/days-left badge on the card itself.
   const isUrgent = o => CONSTANT_CATEGORIES.includes(o.category) && o.dueDate && daysUntil(o.dueDate) <= URGENT_THRESHOLD_DAYS;
   const urgent = orders.filter(isUrgent).sort((a,b) => daysUntil(a.dueDate) - daysUntil(b.dueDate));
@@ -2431,11 +2519,11 @@ function renderOrders(){
     html += `
     <div class="cat-section urgent-section">
       <div class="cat-section-toggle" onclick="toggleSection('${key}')">
-        <div class="cat-section-title">🔥 Срочно и просрочено</div>
+        <div class="cat-section-title">🔥 Терміново і прострочено</div>
         <div class="cat-section-meta">
-          ${pendingSum > 0 ? `Ожидает: ${pendingSum.toLocaleString('ru-RU')} грн` : ''}
+          ${pendingSum > 0 ? `Очікує: ${pendingSum.toLocaleString('uk-UA')} грн` : ''}
           ${pendingSum > 0 && overdueSum > 0 ? ' · ' : ''}
-          ${overdueSum > 0 ? `<span style="color:var(--coral);">Просрочено: ${overdueSum.toLocaleString('ru-RU')} грн</span>` : ''}
+          ${overdueSum > 0 ? `<span style="color:var(--coral);">Прострочено: ${overdueSum.toLocaleString('uk-UA')} грн</span>` : ''}
           <span class="toggle-arrow" id="arrow-${key}">${isOpen?'▾':'▸'}</span>
         </div>
       </div>
@@ -2463,7 +2551,7 @@ function renderOrders(){
           <span class="cat-dot" style="background:${CAT_COLORS[cat]}"></span>
           ${escapeHtml(cat)}
         </div>
-        <div class="cat-section-meta">${inCat.length} шт · ${total.toLocaleString('ru-RU')} грн <span class="toggle-arrow" id="arrow-${key}">${isOpen?'▾':'▸'}</span></div>
+        <div class="cat-section-meta">${inCat.length} шт · ${total.toLocaleString('uk-UA')} грн <span class="toggle-arrow" id="arrow-${key}">${isOpen?'▾':'▸'}</span></div>
       </div>
       <div class="orders-strip cat-section-content${isOpen?'':' collapsed'}" data-key="${key}">
         ${inCat.map(renderOrderCard).join('')}
@@ -2472,7 +2560,7 @@ function renderOrders(){
     `;
   });
 
-  // everything else (Прожиточный минимум, Непредвиденные расходы, Ну очень надо, and any
+  // everything else (Прожитковий мінімум, Непередбачені витрати, Дуже треба, and any
   // unrecognized category) — always shown in full, never collapsed, never moved to "Срочно"
   const actual = rest.filter(o => !seenIds.has(o.id)).sort((a,b) => daysUntil(a.dueDate) - daysUntil(b.dueDate));
   if(actual.length > 0){
@@ -2481,8 +2569,8 @@ function renderOrders(){
     <div class="cat-section">
       <div class="cat-section-title" style="margin-bottom:8px;">
         <span class="cat-dot" style="background:#a89a83"></span>
-        Актуальное
-        <span style="font-weight:700; color:#7a7264; margin-left:6px;">${actual.length} шт · ${total.toLocaleString('ru-RU')} грн</span>
+        Актуальне
+        <span style="font-weight:700; color:#7a7264; margin-left:6px;">${actual.length} шт · ${total.toLocaleString('uk-UA')} грн</span>
       </div>
       <div class="orders-strip">
         ${actual.map(renderOrderCard).join('')}
@@ -2496,7 +2584,7 @@ function renderOrders(){
   scheduleSync();
 }
 
-const MONTH_NAMES = ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
+const MONTH_NAMES = ['січень','лютий','березень','квітень','травень','червень','липень','серпень','вересень','жовтень','листопад','грудень'];
 
 function renderCalendar(){
   const today = new Date();
@@ -2552,11 +2640,11 @@ function renderBoard(){
       const shade = (r+c) % 2 === 0 ? 'a' : 'b';
 
       if(idx === JAR_INDEX){
-        html += `<div class="board-cell ${shade} jar-cell" onclick="openJarModal()" title="Заначка"><div>🫙</div><div class="cell-value">${jarBalance.toLocaleString('ru-RU')}</div></div>`;
+        html += `<div class="board-cell ${shade} jar-cell" onclick="openJarModal()" title="Заначка"><div>🫙</div><div class="cell-value">${jarBalance.toLocaleString('uk-UA')}</div></div>`;
         continue;
       }
       if(idx === JAR10_INDEX){
-        html += `<div class="board-cell ${shade} jar10-cell" onclick="openJar10Modal()" title="Банка 10%"><div>🫙</div><div class="cell-value">${jar10Balance.toLocaleString('ru-RU')}</div></div>`;
+        html += `<div class="board-cell ${shade} jar10-cell" onclick="openJar10Modal()" title="Банка 10%"><div>🫙</div><div class="cell-value">${jar10Balance.toLocaleString('uk-UA')}</div></div>`;
         continue;
       }
 
@@ -2567,14 +2655,14 @@ function renderBoard(){
         const assembly = ASSEMBLY[item.category];
         const isAssembling = assembly && item.pieces && item.pieces > 1 && item.icon !== assembly.finalIcon;
         const piecesBadge = isAssembling ? `<div class="cell-value">${item.pieces}/${assembly.maxPieces}</div>` : '';
-        inner = `<div>${item.icon}</div>${piecesBadge}<div class="cell-value">${item.value.toLocaleString('ru-RU')}</div>`;
+        inner = `<div>${item.icon}</div>${piecesBadge}<div class="cell-value">${item.value.toLocaleString('uk-UA')}</div>`;
       }
       html += `<div class="board-cell ${shade}${sel}" onclick="handleCellClick(${idx})">${inner}</div>`;
     }
   }
   board.innerHTML = html;
   const sumEl = document.getElementById('totalSumDisplay');
-  sumEl.textContent = totalSum.toLocaleString('ru-RU');
+  sumEl.textContent = totalSum.toLocaleString('uk-UA');
   document.querySelector('.sum-counter').style.background = totalSum < 0 ? 'var(--coral)' : 'var(--sun)';
   document.querySelector('.sum-counter').style.color = totalSum < 0 ? '#fff' : '#7A5300';
   scheduleSync();
@@ -2720,14 +2808,14 @@ function importData(event){
     try{
       const data = JSON.parse(e.target.result);
       if(!data || typeof data !== 'object'){
-        alert('Файл повреждён или это не резервная копия.');
+        alert('Файл пошкоджений або це не резервна копія.');
         return;
       }
       applyState(data);
       renderEverything();
       scheduleSync(); // push the imported data to Firebase / other devices
     } catch(err){
-      alert('Не получилось прочитать файл: ' + err.message);
+      alert('Не вдалося прочитати файл: ' + err.message);
     }
     event.target.value = '';
   };
@@ -2762,17 +2850,17 @@ function openWalletProgress(){
   const jarsTotal = jarBalance + jar10Balance;
 
   document.getElementById('walletProgressBody').innerHTML = `
-    <div class="progress-section-title">Долги</div>
-    <div class="progress-row"><span class="label">Было на начало</span><span class="val">${baseline.toLocaleString('ru-RU')} грн</span></div>
-    <div class="progress-row"><span class="label">Сейчас</span><span class="val">${currentDebt.toLocaleString('ru-RU')} грн</span></div>
-    <div class="progress-row"><span class="label">Погашено всего</span><span class="val" style="color:#3A8A4E;">${totalDebtPaid.toLocaleString('ru-RU')} грн</span></div>
-    <div class="progress-row"><span class="label">Выросли на</span><span class="val" style="color:var(--coral);">${totalDebtGrown.toLocaleString('ru-RU')} грн</span></div>
+    <div class="progress-section-title">Борги</div>
+    <div class="progress-row"><span class="label">Було на початок</span><span class="val">${baseline.toLocaleString('uk-UA')} грн</span></div>
+    <div class="progress-row"><span class="label">Зараз</span><span class="val">${currentDebt.toLocaleString('uk-UA')} грн</span></div>
+    <div class="progress-row"><span class="label">Погашено всього</span><span class="val" style="color:#3A8A4E;">${totalDebtPaid.toLocaleString('uk-UA')} грн</span></div>
+    <div class="progress-row"><span class="label">Зросли на</span><span class="val" style="color:var(--coral);">${totalDebtGrown.toLocaleString('uk-UA')} грн</span></div>
 
-    <div class="progress-section-title">Бюджет сейчас</div>
-    <div class="progress-row"><span class="label">Доступно на доске</span><span class="val" style="color:#7A5300;">${totalSum.toLocaleString('ru-RU')} грн</span></div>
-    <div class="progress-row"><span class="label">🫙 Заначка</span><span class="val" style="color:#4E3369;">${jarBalance.toLocaleString('ru-RU')} грн</span></div>
-    <div class="progress-row"><span class="label">🫙 Банка 10%</span><span class="val" style="color:#2E6B3A;">${jar10Balance.toLocaleString('ru-RU')} грн</span></div>
-    <div class="progress-row"><span class="label">Всего по банкам</span><span class="val">${jarsTotal.toLocaleString('ru-RU')} грн</span></div>
+    <div class="progress-section-title">Бюджет зараз</div>
+    <div class="progress-row"><span class="label">Доступно на дошці</span><span class="val" style="color:#7A5300;">${totalSum.toLocaleString('uk-UA')} грн</span></div>
+    <div class="progress-row"><span class="label">🫙 Заначка</span><span class="val" style="color:#4E3369;">${jarBalance.toLocaleString('uk-UA')} грн</span></div>
+    <div class="progress-row"><span class="label">🫙 Банка 10%</span><span class="val" style="color:#2E6B3A;">${jar10Balance.toLocaleString('uk-UA')} грн</span></div>
+    <div class="progress-row"><span class="label">Всього по банках</span><span class="val">${jarsTotal.toLocaleString('uk-UA')} грн</span></div>
   `;
   document.getElementById('walletProgressOverlay').classList.add('show');
 }
@@ -2812,7 +2900,6 @@ renderBoard();
 suppressSync = false;
 
 bootstrapSync();
-setTimeout(openWalletGreeting, 500);
 </script>
 </body>
 </html>
