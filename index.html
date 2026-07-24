@@ -1547,9 +1547,12 @@ function renderPurchaseTransfer(){
   const monthIncome = monthTx.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
   const monthExpense = monthTx.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
   const balance = clientTx.reduce((s,t) => s + (t.type === 'income' ? t.amount : -t.amount), 0);
+  const totalTransferred = clientTx
+    .filter(t => t.type === 'expense' && t.label === 'Перевод в личный доход')
+    .reduce((s,t) => s + t.amount, 0);
 
   const byCategory = {};
-  monthTx.filter(t => t.type === 'expense').forEach(t => {
+  monthTx.filter(t => t.type === 'expense' && t.label !== 'Перевод в личный доход').forEach(t => {
     byCategory[t.label] = (byCategory[t.label] || 0) + t.amount;
   });
   const catRows = Object.keys(byCategory)
@@ -1566,6 +1569,7 @@ function renderPurchaseTransfer(){
     <div class="summary-row total-income"><span>Доход</span><span class="amt" style="color:#2E9E96;">${monthIncome.toLocaleString('ru-RU')} грн</span></div>
     <div class="summary-row total-expense"><span>Расход</span><span class="amt">${monthExpense.toLocaleString('ru-RU')} грн</span></div>
     <div class="summary-row"><span>Остаток (общий)</span><span class="amt" style="color:#1E6E67; font-weight:800;">${balance.toLocaleString('ru-RU')} грн</span></div>
+    <div class="summary-row"><span>Переведено (общее)</span><span class="amt" style="color:#7a5cb0; font-weight:800;">${totalTransferred.toLocaleString('ru-RU')} грн</span></div>
     <button class="transfer-to-income-btn" onclick="transferClientBalanceToIncome()" ${balance <= 0 ? 'disabled' : ''}>➜ Перевести в доход от Провидения</button>
     <div class="summary-divider"></div>
     ${catRows || '<div class="summary-empty">Пока нет закупок за месяц.</div>'}
