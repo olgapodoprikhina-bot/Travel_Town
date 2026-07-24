@@ -561,25 +561,18 @@
     </div>
   </div>
 
-  <div class="calendar-card">
-    <div class="calendar-head">
-      <h2 id="calMonthLabel">Месяц</h2>
-      <div class="calendar-legend">
-        <span><i style="background:#1E8FC4"></i>Кредит</span>
-        <span><i style="background:#2E9E96"></i>Коммуналка</span>
-        <span><i style="background:#5FCB7A"></i>Мин.</span>
-        <span><i style="background:#FF6F61"></i>Непредв.</span>
-        <span><i style="background:#FFC93C"></i>Надо</span>
-      </div>
-    </div>
-    <div class="calendar-weekdays">
-      <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
-    </div>
-    <div class="calendar-grid" id="calendarGrid"></div>
-  </div>
-
   <div class="layout">
     <div>
+      <div class="calendar-card">
+        <div class="calendar-head">
+          <h2 id="calMonthLabel">Месяц</h2>
+        </div>
+        <div class="calendar-weekdays">
+          <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
+        </div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+      </div>
+
       <div class="sources-card">
         <div class="section-toggle" onclick="toggleSection('sources')">
           <span>💰 Источники дохода</span>
@@ -1132,12 +1125,22 @@ function daysUntil(dueDate){
 
 // Unlike credit (where a payment reduces the debt), an unpaid utility bill past its due date
 // gets added ON TOP of the linked debt instead — the missed bill becomes part of what's owed.
+function isPastBillingMonth(dueDate){
+  const due = new Date(dueDate + 'T00:00:00');
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  return (today.getFullYear() > due.getFullYear()) ||
+    (today.getFullYear() === due.getFullYear() && today.getMonth() > due.getMonth());
+}
+
+// Stage 1 (due date passed, same month): stays visible as overdue in the urgent list — no debt change yet.
+// Stage 2 (the billing month has actually ended and it's still unpaid): NOW it gets added to the linked debt.
 function escalateOverdueUtilities(){
   orders.forEach(o => {
     if(o.category !== 'Константа: Коммуналка') return;
     if(!o.debtId) return;
     if(o.escalated) return;
-    if(!o.dueDate || daysUntil(o.dueDate) >= 0) return;
+    if(!o.dueDate || !isPastBillingMonth(o.dueDate)) return;
 
     const debt = debts.find(d => d.id === o.debtId);
     if(debt){
@@ -1159,10 +1162,10 @@ let openSections = new Set(); // 'sources', 'debts', 'cat-<Category>'
 function toggleSection(key){
   if(openSections.has(key)) openSections.delete(key);
   else openSections.add(key);
-  if(key.startsWith('cat-')){
-    renderOrders();
-  } else {
+  if(key === 'sources' || key === 'debts'){
     applySectionState();
+  } else {
+    renderOrders();
   }
 }
 
@@ -1225,10 +1228,22 @@ function renderOrders(){
   let html = '';
 
   if(urgent.length > 0){
+    const overdueSum = urgent.filter(o => daysUntil(o.dueDate) < 0).reduce((s,o) => s + o.sum, 0);
+    const pendingSum = urgent.filter(o => daysUntil(o.dueDate) >= 0).reduce((s,o) => s + o.sum, 0);
+    const key = 'urgent';
+    const isOpen = openSections.has(key);
     html += `
-    <div class="urgent-section">
-      <div class="urgent-title">🔥 Срочно и просрочено</div>
-      <div class="orders-strip">
+    <div class="cat-section urgent-section">
+      <div class="cat-section-toggle" onclick="toggleSection('${key}')">
+        <div class="cat-section-title">🔥 Срочно и просрочено</div>
+        <div class="cat-section-meta">
+          ${pendingSum > 0 ? `Ожидает: ${pendingSum.toLocaleString('ru-RU')} грн` : ''}
+          ${pendingSum > 0 && overdueSum > 0 ? ' · ' : ''}
+          ${overdueSum > 0 ? `<span style="color:var(--coral);">Просрочено: ${overdueSum.toLocaleString('ru-RU')} грн</span>` : ''}
+          <span class="toggle-arrow" id="arrow-${key}">${isOpen?'▾':'▸'}</span>
+        </div>
+      </div>
+      <div class="orders-strip cat-section-content${isOpen?'':' collapsed'}" data-key="${key}">
         ${urgent.map(renderOrderCard).join('')}
       </div>
     </div>
