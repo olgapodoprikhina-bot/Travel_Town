@@ -70,6 +70,45 @@
   }
   .collapsed{display:none !important;}
 
+  /* --- Monthly income/expense summary --- */
+  .summary-card{
+    margin-top:8px;
+    background:rgba(255,255,255,0.6);
+    border-radius:16px;
+    padding:10px 12px;
+  }
+  .summary-row{
+    display:flex;
+    justify-content:space-between;
+    font-size:11.5px;
+    font-weight:700;
+    color:#6b6255;
+    padding:3px 0;
+  }
+  .summary-row.total-income .amt{color:var(--leaf); font-weight:800;}
+  .summary-row.total-expense .amt{color:var(--coral); font-weight:800;}
+  .summary-month{
+    font-size:10.5px;
+    font-weight:800;
+    color:#a89a83;
+    margin-bottom:6px;
+    text-transform:capitalize;
+  }
+  .summary-divider{
+    border-top:1px solid rgba(0,0,0,0.08);
+    margin:6px 0;
+  }
+  .summary-cat-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:10.5px;
+    color:#7a7264;
+    padding:2px 0;
+  }
+  .summary-cat-row .dot{width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:5px;}
+  .summary-empty{font-size:11px; color:#a89a83;}
+
   /* --- Debts: intentionally quiet/compact so a long list doesn't feel heavy --- */
   .debts-card{
     margin-top:8px;
@@ -521,6 +560,23 @@
     font-size:14.5px;
     background:#fff;
   }
+  .quick-date-row{
+    display:flex;
+    gap:6px;
+    margin-top:6px;
+  }
+  .quick-date-row button{
+    flex:1;
+    border:none;
+    background:#E9DCC0;
+    color:#5a5142;
+    border-radius:10px;
+    padding:6px 0;
+    font-weight:800;
+    font-size:12px;
+    cursor:pointer;
+  }
+  .quick-date-row button:hover{background:#DECBA0;}
   .modal-actions{
     display:flex; gap:8px; margin-top:16px;
   }
@@ -580,6 +636,16 @@
         </div>
         <div id="sourcesContent" class="section-content collapsed">
           <div id="sourcesList"></div>
+        </div>
+      </div>
+
+      <div class="summary-card">
+        <div class="section-toggle" onclick="toggleSection('summary')">
+          <span>🔁 Трансфер заказов</span>
+          <span class="toggle-arrow" id="arrow-summary">▸</span>
+        </div>
+        <div id="summaryContent" class="section-content collapsed">
+          <div id="summaryBody"></div>
         </div>
       </div>
 
@@ -644,6 +710,11 @@
     <div class="field">
       <label>Дата платежа (для фиксированных — обязательно)</label>
       <input id="fDate" type="date">
+      <div class="quick-date-row">
+        <button type="button" onclick="setQuickDate(-1)">Вчера</button>
+        <button type="button" onclick="setQuickDate(0)">Сегодня</button>
+        <button type="button" onclick="setQuickDate(1)">Завтра</button>
+      </div>
     </div>
     <div class="field">
       <label style="display:flex; align-items:center; gap:6px; font-weight:800;">
@@ -726,6 +797,8 @@ const BOARD_COLS = 7, BOARD_ROWS = 8;
 let boardCells = new Array(BOARD_COLS*BOARD_ROWS).fill(null);
 let selectedCellIdx = null;
 let totalSum = 0;
+let incomeLog = [];  // {date:'YYYY-MM-DD', category, amount}
+let expenseLog = []; // {date:'YYYY-MM-DD', category, amount}
 
 // once an item reaches the top tier of its category, further same-icon merges assemble pieces
 // toward a final icon (e.g. cake slices -> whole cake) instead of stopping
@@ -881,7 +954,8 @@ function saveOrder(){
       Object.assign(o, {name, purpose, sum, category, dueDate: dueDate || null, debtId: debtId || null, debtPrincipal: debtPrincipal || null, recurring, escalated:false});
     }
   } else {
-    orders.push({id:idCounter++, name, purpose, sum, category, dueDate: dueDate || null, debtId: debtId || null, debtPrincipal: debtPrincipal || null, recurring, escalated:false});
+    const newId = idCounter++;
+    orders.push({id:newId, templateId:newId, name, purpose, sum, category, dueDate: dueDate || null, debtId: debtId || null, debtPrincipal: debtPrincipal || null, recurring, escalated:false});
   }
   closeModal();
   renderOrders();
@@ -932,6 +1006,7 @@ function confirmPay(cellIdx){
   orders.splice(idx,1);
   archivedOrders.push(order);
   totalSum -= order.sum;
+  expenseLog.push({date: todayStr(), category: order.category, amount: order.sum});
 
   if(order.debtId){
     const debt = debts.find(d => d.id === order.debtId);
@@ -955,6 +1030,7 @@ function confirmPay(cellIdx){
   renderArchive();
   renderDebts();
   renderBoard();
+  renderSummary();
 }
 
 function toggleArchive(){
@@ -1007,8 +1083,10 @@ function placeFromSource(id){
   }
   boardCells[emptyIdx] = {icon, category:s.category, value:amt, pieces:1};
   totalSum += amt;
+  incomeLog.push({date: todayStr(), category: s.category, amount: amt});
   input.value = '';
   renderBoard();
+  renderSummary();
 }
 
 function handleCellClick(idx){
@@ -1099,20 +1177,77 @@ function renderDebts(){
   `).join('');
 }
 
-function daysLeftLabel(dueDate){
+function daysLeftLabel(dueDate, category){
   if(!dueDate) return '';
   const today = new Date();
   today.setHours(0,0,0,0);
   const due = new Date(dueDate + 'T00:00:00');
   const diffDays = Math.round((due - today) / 86400000);
+  const isConstant = CONSTANT_CATEGORIES.includes(category);
 
   if(diffDays > 0){
     return `<div class="due-badge due-ok">Осталось: ${diffDays} дн.</div>`;
   } else if(diffDays === 0){
-    return `<div class="due-badge due-today">Сегодня срок!</div>`;
+    return isConstant
+      ? `<div class="due-badge due-today">Сегодня срок!</div>`
+      : `<div class="due-badge due-ok">Актуально</div>`;
   } else {
     return `<div class="due-badge due-overdue">Просрочено: ${Math.abs(diffDays)} дн.</div>`;
   }
+}
+
+function setQuickDate(offsetDays){
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  document.getElementById('fDate').value = `${y}-${m}-${day}`;
+}
+
+function todayStr(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function renderSummary(){
+  const body = document.getElementById('summaryBody');
+  if(!body) return;
+
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = today.getMonth();
+  const inThisMonth = e => {
+    const d = new Date(e.date + 'T00:00:00');
+    return d.getFullYear() === y && d.getMonth() === m;
+  };
+
+  const monthIncome = incomeLog.filter(inThisMonth);
+  const monthExpense = expenseLog.filter(inThisMonth);
+
+  const totalIncome = monthIncome.reduce((s,e) => s + e.amount, 0);
+  const totalExpense = monthExpense.reduce((s,e) => s + e.amount, 0);
+
+  const byCategory = {};
+  monthExpense.forEach(e => {
+    byCategory[e.category] = (byCategory[e.category] || 0) + e.amount;
+  });
+  const catRows = Object.keys(byCategory)
+    .sort((a,b) => byCategory[b] - byCategory[a])
+    .map(cat => `
+      <div class="summary-cat-row">
+        <span><span class="dot" style="background:${CAT_COLORS[cat]||'#a89a83'}"></span>${escapeHtml(cat)}</span>
+        <span>${byCategory[cat].toLocaleString('ru-RU')} грн</span>
+      </div>
+    `).join('');
+
+  body.innerHTML = `
+    <div class="summary-month">Месяц: текущий (${MONTH_NAMES[m]} ${y})</div>
+    <div class="summary-row total-income"><span>Доход</span><span class="amt">${totalIncome.toLocaleString('ru-RU')} грн</span></div>
+    <div class="summary-row total-expense"><span>Расход</span><span class="amt">${totalExpense.toLocaleString('ru-RU')} грн</span></div>
+    <div class="summary-divider"></div>
+    ${catRows || '<div class="summary-empty">Пока нет расходов за месяц.</div>'}
+  `;
 }
 
 function daysUntil(dueDate){
@@ -1179,7 +1314,6 @@ function applySectionState(){
   });
 }
 
-const CATEGORY_ORDER = ['Константа: Кредит','Константа: Коммуналка','Прожиточный минимум','Непредвиденные расходы','Ну очень надо'];
 
 const URGENT_THRESHOLD_DAYS = 3;
 
@@ -1198,12 +1332,62 @@ function renderOrderCard(o){
       <div class="purpose">${escapeHtml(o.purpose)}</div>
       <div class="sum">${o.sum.toLocaleString('ru-RU')} грн</div>
       <div class="cat">${escapeHtml(o.category)}</div>
-      ${daysLeftLabel(o.dueDate)}
+      ${daysLeftLabel(o.dueDate, o.category)}
       ${debtBadge}
       <button class="pay-btn" onclick="payOrder(${o.id})">✓ Оплатить</button>
     </div>
   `;
 }
+
+// Recurring "константа" payments (credit or utilities): each month gets its own order on
+// the same day-of-month, using the LAST entered sum as the basis (utility tariffs change
+// over time, so the newest instance's amount is what carries forward — not the original).
+// An unpaid instance from a previous month is NOT replaced or removed — it just keeps
+// counting overdue days (and, for utilities, still escalates into the debt at month-end
+// via escalateOverdueUtilities, unchanged). This only adds this month's copy if missing.
+const RECURRING_CATEGORIES = ['Константа: Кредит', 'Константа: Коммуналка'];
+
+function generateRecurringConstantInstances(){
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+
+  const allKnown = orders.concat(archivedOrders);
+  const templateIds = new Set(
+    allKnown.filter(o => o.recurring && RECURRING_CATEGORIES.includes(o.category) && o.templateId).map(o => o.templateId)
+  );
+
+  templateIds.forEach(tid => {
+    const instances = allKnown.filter(o => o.templateId === tid && o.recurring && RECURRING_CATEGORIES.includes(o.category));
+    if(instances.length === 0) return;
+    // use the most recently created instance as the basis for name/sum/etc. — captures tariff changes
+    const basis = instances.reduce((a,b) => (b.id > a.id ? b : a));
+    if(!basis.dueDate) return;
+
+    const day = Math.min(new Date(basis.dueDate + 'T00:00:00').getDate(), daysInMonth);
+    const expectedDate = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+
+    const alreadyExists = instances.some(o => o.dueDate === expectedDate);
+    if(alreadyExists) return;
+
+    orders.push({
+      id: idCounter++,
+      templateId: tid,
+      name: basis.name,
+      purpose: basis.purpose,
+      sum: basis.sum,
+      category: basis.category,
+      dueDate: expectedDate,
+      debtId: basis.debtId,
+      debtPrincipal: basis.debtPrincipal,
+      recurring: true,
+      escalated: false
+    });
+  });
+}
+
+const CONSTANT_CATEGORIES = ['Константа: Кредит','Константа: Коммуналка'];
 
 function renderOrders(){
   const container = document.getElementById('ordersByCategory');
@@ -1214,6 +1398,7 @@ function renderOrders(){
   });
 
   escalateOverdueUtilities();
+  generateRecurringConstantInstances();
 
   if(orders.length === 0){
     container.innerHTML = '<div class="empty-orders">Пока нет заказов — нажми "Добавить заказ" выше.</div>';
@@ -1221,7 +1406,10 @@ function renderOrders(){
     return;
   }
 
-  const isUrgent = o => o.dueDate && daysUntil(o.dueDate) <= URGENT_THRESHOLD_DAYS;
+  // Only Кредит/Коммуналка participate in urgency escalation and collapsible grouping.
+  // Every other category always shows in full under "Актуальное", never migrating sections —
+  // it just displays the overdue/days-left badge on the card itself.
+  const isUrgent = o => CONSTANT_CATEGORIES.includes(o.category) && o.dueDate && daysUntil(o.dueDate) <= URGENT_THRESHOLD_DAYS;
   const urgent = orders.filter(isUrgent).sort((a,b) => daysUntil(a.dueDate) - daysUntil(b.dueDate));
   const rest = orders.filter(o => !isUrgent(o));
 
@@ -1252,7 +1440,7 @@ function renderOrders(){
 
   const seenIds = new Set();
 
-  CATEGORY_ORDER.forEach(cat => {
+  CONSTANT_CATEGORIES.forEach(cat => {
     const inCat = rest.filter(o => o.category === cat).sort((a,b) => daysUntil(a.dueDate) - daysUntil(b.dueDate));
     if(inCat.length === 0) return;
     inCat.forEach(o => seenIds.add(o.id));
@@ -1276,23 +1464,20 @@ function renderOrders(){
     `;
   });
 
-  // safety net: any non-urgent order whose category didn't match a known bucket still gets shown, not hidden
-  const orphaned = rest.filter(o => !seenIds.has(o.id)).sort((a,b) => daysUntil(a.dueDate) - daysUntil(b.dueDate));
-  if(orphaned.length > 0){
-    const key = 'cat-other';
-    const total = orphaned.reduce((s,o) => s + o.sum, 0);
-    const isOpen = openSections.has(key);
+  // everything else (Прожиточный минимум, Непредвиденные расходы, Ну очень надо, and any
+  // unrecognized category) — always shown in full, never collapsed, never moved to "Срочно"
+  const actual = rest.filter(o => !seenIds.has(o.id)).sort((a,b) => daysUntil(a.dueDate) - daysUntil(b.dueDate));
+  if(actual.length > 0){
+    const total = actual.reduce((s,o) => s + o.sum, 0);
     html += `
     <div class="cat-section">
-      <div class="cat-section-toggle" onclick="toggleSection('${key}')">
-        <div class="cat-section-title">
-          <span class="cat-dot" style="background:#a89a83"></span>
-          Другое
-        </div>
-        <div class="cat-section-meta">${orphaned.length} шт · ${total.toLocaleString('ru-RU')} грн <span class="toggle-arrow" id="arrow-${key}">${isOpen?'▾':'▸'}</span></div>
+      <div class="cat-section-title" style="margin-bottom:8px;">
+        <span class="cat-dot" style="background:#a89a83"></span>
+        Актуальное
+        <span style="font-weight:700; color:#7a7264; margin-left:6px;">${actual.length} шт · ${total.toLocaleString('ru-RU')} грн</span>
       </div>
-      <div class="orders-strip cat-section-content${isOpen?'':' collapsed'}" data-key="${key}">
-        ${orphaned.map(renderOrderCard).join('')}
+      <div class="orders-strip">
+        ${actual.map(renderOrderCard).join('')}
       </div>
     </div>
     `;
@@ -1385,7 +1570,8 @@ function exportData(){
     orders, archivedOrders, idCounter,
     sources, sourceIdCounter,
     debts, debtIdCounter,
-    boardCells, totalSum
+    boardCells, totalSum,
+    incomeLog, expenseLog
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -1419,9 +1605,12 @@ function importData(event){
       debtIdCounter = data.debtIdCounter || 1;
       boardCells = data.boardCells || new Array(BOARD_COLS*BOARD_ROWS).fill(null);
       totalSum = data.totalSum || 0;
+      incomeLog = data.incomeLog || [];
+      expenseLog = data.expenseLog || [];
       selectedCellIdx = null;
 
       renderSources();
+      renderSummary();
       renderDebts();
       renderOrders();
       renderArchive();
@@ -1435,6 +1624,7 @@ function importData(event){
 }
 
 renderSources();
+renderSummary();
 renderDebts();
 renderOrders();
 renderArchive();
