@@ -3,6 +3,45 @@
 <head>
 <meta charset="UTF-8">
 <title>Заказы</title>
+<script type="module" id="firebase-init">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getFirestore, doc, setDoc, onSnapshot, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyB2Cizw9o3k_NEL5137i8g1vfmLPlacz1Y",
+    authDomain: "le-jardin-des-finances.firebaseapp.com",
+    projectId: "le-jardin-des-finances",
+    storageBucket: "le-jardin-des-finances.firebasestorage.app",
+    messagingSenderId: "60405665439",
+    appId: "1:60405665439:web:44d6af56569c8157705caa"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const USER_DOC = 'budget/olga';
+
+  window.fbSave = async function(data) {
+    try {
+      await setDoc(doc(db, USER_DOC), data, {merge: true});
+    } catch(e) { console.warn('Firebase save error:', e); }
+  };
+
+  window.fbSubscribe = function(onChange) {
+    return onSnapshot(doc(db, USER_DOC), (snap) => {
+      if (snap.exists()) onChange(snap.data());
+    });
+  };
+
+  window.fbLoad = async function() {
+    try {
+      const snap = await getDoc(doc(db, USER_DOC));
+      return snap.exists() ? snap.data() : null;
+    } catch(e) { console.warn('Firebase load error:', e); return null; }
+  };
+
+  window.__fbReady = true;
+  console.log('Firebase ready ✓');
+</script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap');
 
@@ -364,6 +403,17 @@
     box-shadow:0 3px 0 rgba(0,0,0,0.15);
   }
   .icon-btn:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(0,0,0,0.15);}
+  .icon-btn.icon-only{
+    padding:8px 10px;
+    font-size:16px;
+    line-height:1;
+    border-radius:50%;
+    width:34px;
+    height:34px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
 
   /* --- Calendar (tiny hint-sized widget) --- */
   .calendar-card{
@@ -726,8 +776,8 @@
   <div class="header">
     <h1>🧵 Мои заказы</h1>
     <div class="header-actions">
-      <button class="icon-btn" onclick="exportData()" title="Скачать резервную копию данных">💾 Сохранить</button>
-      <button class="icon-btn" onclick="document.getElementById('importFile').click()" title="Загрузить данные из файла">📂 Загрузить</button>
+      <button class="icon-btn icon-only" onclick="exportData()" title="Скачать резервную копию данных">💾</button>
+      <button class="icon-btn icon-only" onclick="document.getElementById('importFile').click()" title="Загрузить данные из файла">📂</button>
       <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importData(event)">
       <button class="add-btn client-purchase-btn" onclick="openPurchaseModal()">🛒 Закупка</button>
       <button class="add-btn" onclick="openModal()">+ Добавить заказ</button>
@@ -930,6 +980,10 @@
 </div>
 
 <script>
+let suppressSync = false; // true while applying incoming remote data, to avoid sync loops
+let syncTimer = null;
+const LS_STATE_KEY = 'moi_zakazy_state_v1';
+
 let orders = [];
 let archivedOrders = [];
 let idCounter = 1;
@@ -1345,6 +1399,7 @@ function renderDebts(){
 
   if(debts.length === 0){
     list.innerHTML = '<div class="debts-empty">Пока пусто — добавь долг ниже.</div>';
+    scheduleSync();
     return;
   }
   list.innerHTML = debts.map(d => `
@@ -1354,6 +1409,7 @@ function renderDebts(){
       <button class="d-del" onclick="deleteDebt(${d.id})">✕</button>
     </div>
   `).join('');
+  scheduleSync();
 }
 
 function daysLeftLabel(dueDate, category){
@@ -1489,6 +1545,7 @@ function renderClientFunds(){
   const balance = clientTx.reduce((s,t) => s + (t.type === 'income' ? t.amount : -t.amount), 0);
   balanceEl.textContent = balance.toLocaleString('ru-RU');
   renderPurchaseTransfer();
+  scheduleSync();
 }
 
 function renderSummary(){
@@ -1755,6 +1812,7 @@ function renderOrders(){
   if(orders.length === 0){
     container.innerHTML = '<div class="empty-orders">Пока нет заказов — нажми "Добавить заказ" выше.</div>';
     renderCalendar();
+    scheduleSync();
     return;
   }
 
@@ -1837,6 +1895,7 @@ function renderOrders(){
 
   container.innerHTML = html;
   renderCalendar();
+  scheduleSync();
 }
 
 const MONTH_NAMES = ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
@@ -1910,10 +1969,114 @@ function renderBoard(){
   sumEl.textContent = totalSum.toLocaleString('ru-RU');
   document.querySelector('.sum-counter').style.background = totalSum < 0 ? 'var(--coral)' : 'var(--sun)';
   document.querySelector('.sum-counter').style.color = totalSum < 0 ? '#fff' : '#7A5300';
+  scheduleSync();
 }
 
 function escapeHtml(s){
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function gatherState(){
+  return {
+    orders, archivedOrders, idCounter,
+    sources, sourceIdCounter,
+    debts, debtIdCounter,
+    boardCells, totalSum,
+    incomeLog, expenseLog,
+    clientTx, clientTxIdCounter
+  };
+}
+
+function applyState(data){
+  orders = data.orders || [];
+  archivedOrders = data.archivedOrders || [];
+  idCounter = data.idCounter || 1;
+  sources = data.sources || sources;
+  sourceIdCounter = data.sourceIdCounter || sourceIdCounter;
+  debts = data.debts || [];
+  debtIdCounter = data.debtIdCounter || 1;
+  boardCells = data.boardCells || new Array(BOARD_COLS*BOARD_ROWS).fill(null);
+  totalSum = data.totalSum || 0;
+  incomeLog = data.incomeLog || [];
+  expenseLog = data.expenseLog || [];
+  clientTx = data.clientTx || [];
+  clientTxIdCounter = data.clientTxIdCounter || 1;
+  selectedCellIdx = null;
+}
+
+function renderEverything(){
+  renderSources();
+  renderSummary();
+  renderClientFunds();
+  renderDebts();
+  renderOrders();
+  renderArchive();
+  renderBoard();
+}
+
+// Debounced save: writes to localStorage immediately, and to Firebase shortly after
+// (so rapid typing/clicking doesn't spam network writes).
+function scheduleSync(){
+  if(suppressSync) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(doSync, 700);
+}
+
+function doSync(){
+  const payload = gatherState();
+  payload._updatedAt = Date.now();
+  try{ localStorage.setItem(LS_STATE_KEY, JSON.stringify(payload)); }catch{}
+  if(window.fbSave) window.fbSave(payload);
+}
+
+// On load: prefer whichever of (local cache) / (Firebase) is newer, then subscribe
+// to real-time changes from other devices.
+function bootstrapSync(){
+  let unsubscribe = null;
+
+  async function init(){
+    if(!window.fbLoad) return;
+
+    let localData = null;
+    try{ localData = JSON.parse(localStorage.getItem(LS_STATE_KEY)); }catch{}
+    const localTime = (localData && localData._updatedAt) || 0;
+
+    const remoteData = await window.fbLoad();
+    if(remoteData && remoteData._updatedAt && remoteData._updatedAt > localTime){
+      suppressSync = true;
+      applyState(remoteData);
+      try{ localStorage.setItem(LS_STATE_KEY, JSON.stringify(remoteData)); }catch{}
+      renderEverything();
+      suppressSync = false;
+    } else if(localData){
+      suppressSync = true;
+      applyState(localData);
+      renderEverything();
+      suppressSync = false;
+      // push local (newer) state up so other devices catch up
+      doSync();
+    }
+
+    if(window.fbSubscribe){
+      unsubscribe = window.fbSubscribe(data => {
+        let lsTime = 0;
+        try{ lsTime = JSON.parse(localStorage.getItem(LS_STATE_KEY))._updatedAt || 0; }catch{}
+        if(!data._updatedAt || data._updatedAt <= lsTime) return;
+        suppressSync = true;
+        applyState(data);
+        try{ localStorage.setItem(LS_STATE_KEY, JSON.stringify(data)); }catch{}
+        renderEverything();
+        suppressSync = false;
+      });
+    }
+  }
+
+  const check = setInterval(() => {
+    if(window.fbLoad){ clearInterval(check); init(); }
+  }, 200);
+  setTimeout(() => clearInterval(check), 5000);
+
+  window.addEventListener('beforeunload', () => { if(unsubscribe) unsubscribe(); });
 }
 
 function exportData(){
@@ -1949,28 +2112,9 @@ function importData(event){
         alert('Файл повреждён или это не резервная копия.');
         return;
       }
-      orders = data.orders || [];
-      archivedOrders = data.archivedOrders || [];
-      idCounter = data.idCounter || 1;
-      sources = data.sources || sources;
-      sourceIdCounter = data.sourceIdCounter || sourceIdCounter;
-      debts = data.debts || [];
-      debtIdCounter = data.debtIdCounter || 1;
-      boardCells = data.boardCells || new Array(BOARD_COLS*BOARD_ROWS).fill(null);
-      totalSum = data.totalSum || 0;
-      incomeLog = data.incomeLog || [];
-      expenseLog = data.expenseLog || [];
-      clientTx = data.clientTx || [];
-      clientTxIdCounter = data.clientTxIdCounter || 1;
-      selectedCellIdx = null;
-
-      renderSources();
-      renderSummary();
-      renderClientFunds();
-      renderDebts();
-      renderOrders();
-      renderArchive();
-      renderBoard();
+      applyState(data);
+      renderEverything();
+      scheduleSync(); // push the imported data to Firebase / other devices
     } catch(err){
       alert('Не получилось прочитать файл: ' + err.message);
     }
@@ -1979,6 +2123,7 @@ function importData(event){
   reader.readAsText(file);
 }
 
+suppressSync = true;
 renderSources();
 renderSummary();
 renderClientFunds();
@@ -1986,6 +2131,9 @@ renderDebts();
 renderOrders();
 renderArchive();
 renderBoard();
+suppressSync = false;
+
+bootstrapSync();
 </script>
 </body>
 </html>
