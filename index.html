@@ -640,7 +640,7 @@
     </div>
     <div class="field">
       <label>Категория</label>
-      <select id="fCategory">
+      <select id="fCategory" onchange="toggleDebtSelect()">
         <option value="Константа: Кредит">Константа: Кредит</option>
         <option value="Константа: Коммуналка">Константа: Коммуналка</option>
         <option value="Прожиточный минимум">Прожиточный минимум (еда)</option>
@@ -669,7 +669,7 @@
       <select id="fDebtLink"></select>
     </div>
     <div class="field" id="debtPrincipalField" style="display:none;">
-      <label>Сколько из этой суммы идёт на тело долга (остальное — проценты)</label>
+      <label>Сколько из этой суммы идёт на тело кредита (остальное — проценты)</label>
       <input id="fDebtPrincipal" type="text" inputmode="decimal" placeholder="Например: 400 из 550">
     </div>
     <div class="modal-actions">
@@ -831,8 +831,10 @@ function deleteOrderDraft(id){
 
 function toggleDebtSelect(){
   const checked = document.getElementById('fIsDebt').checked;
+  const category = document.getElementById('fCategory').value;
+  const isCredit = category === 'Константа: Кредит';
   document.getElementById('debtSelectField').style.display = checked ? 'flex' : 'none';
-  document.getElementById('debtPrincipalField').style.display = checked ? 'flex' : 'none';
+  document.getElementById('debtPrincipalField').style.display = (checked && isCredit) ? 'flex' : 'none';
 }
 function closeModal(){
   document.getElementById('overlay').classList.remove('show');
@@ -852,8 +854,9 @@ function saveOrder(){
   const category = document.getElementById('fCategory').value;
   const dueDate = document.getElementById('fDate').value;
   const isDebt = document.getElementById('fIsDebt').checked;
+  const isCredit = category === 'Константа: Кредит';
   const debtId = isDebt ? parseInt(document.getElementById('fDebtLink').value) : null;
-  const debtPrincipal = isDebt ? parseFloat(document.getElementById('fDebtPrincipal').value.replace(',', '.')) : null;
+  const debtPrincipal = (isDebt && isCredit) ? parseFloat(document.getElementById('fDebtPrincipal').value.replace(',', '.')) : null;
   const errEl = document.getElementById('formError');
 
   if(!name || !sum || sum<=0){
@@ -871,8 +874,8 @@ function saveOrder(){
     errEl.style.display = 'block';
     return;
   }
-  if(isDebt && (!debtPrincipal || debtPrincipal <= 0 || debtPrincipal > sum)){
-    errEl.textContent = 'Впиши сумму на тело долга (не больше общей суммы платежа)';
+  if(isDebt && isCredit && (!debtPrincipal || debtPrincipal <= 0 || debtPrincipal > sum)){
+    errEl.textContent = 'Впиши сумму на тело кредита (не больше общей суммы платежа)';
     errEl.style.display = 'block';
     return;
   }
@@ -882,10 +885,10 @@ function saveOrder(){
   if(editingOrderId){
     const o = orders.find(x => x.id === editingOrderId);
     if(o){
-      Object.assign(o, {name, purpose, sum, category, dueDate: dueDate || null, debtId: debtId || null, debtPrincipal: debtPrincipal || null, recurring});
+      Object.assign(o, {name, purpose, sum, category, dueDate: dueDate || null, debtId: debtId || null, debtPrincipal: debtPrincipal || null, recurring, escalated:false});
     }
   } else {
-    orders.push({id:idCounter++, name, purpose, sum, category, dueDate: dueDate || null, debtId: debtId || null, debtPrincipal: debtPrincipal || null, recurring});
+    orders.push({id:idCounter++, name, purpose, sum, category, dueDate: dueDate || null, debtId: debtId || null, debtPrincipal: debtPrincipal || null, recurring, escalated:false});
   }
   closeModal();
   renderOrders();
@@ -974,7 +977,7 @@ function renderArchive(){
   }
   list.innerHTML = archivedOrders.slice().reverse().map(o => `
     <div class="archive-item">
-      <span>${escapeHtml(o.name)}</span>
+      <span>${escapeHtml(o.name)}${o.escalated ? ' <small style="color:#B5483D;">(включено в долг, не оплачено)</small>' : ''}</span>
       <span>${o.sum.toLocaleString('ru-RU')} грн</span>
     </div>
   `).join('');
@@ -1127,6 +1130,30 @@ function daysUntil(dueDate){
   return Math.round((due - today) / 86400000);
 }
 
+// Unlike credit (where a payment reduces the debt), an unpaid utility bill past its due date
+// gets added ON TOP of the linked debt instead — the missed bill becomes part of what's owed.
+function escalateOverdueUtilities(){
+  orders.forEach(o => {
+    if(o.category !== 'Константа: Коммуналка') return;
+    if(!o.debtId) return;
+    if(o.escalated) return;
+    if(!o.dueDate || daysUntil(o.dueDate) >= 0) return;
+
+    const debt = debts.find(d => d.id === o.debtId);
+    if(debt){
+      debt.sum += o.sum;
+    }
+    o.escalated = true;
+  });
+
+  const toArchive = orders.filter(o => o.escalated);
+  if(toArchive.length > 0){
+    toArchive.forEach(o => archivedOrders.push(o));
+    orders = orders.filter(o => !o.escalated);
+    renderDebts();
+  }
+}
+
 let openSections = new Set(); // 'sources', 'debts', 'cat-<Category>'
 
 function toggleSection(key){
@@ -1182,6 +1209,8 @@ function renderOrders(){
   orders.forEach(o => {
     if(o.category === 'Константа') o.category = 'Константа: Кредит';
   });
+
+  escalateOverdueUtilities();
 
   if(orders.length === 0){
     container.innerHTML = '<div class="empty-orders">Пока нет заказов — нажми "Добавить заказ" выше.</div>';
