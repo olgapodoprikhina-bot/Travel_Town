@@ -109,6 +109,67 @@
   .summary-cat-row .dot{width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:5px;}
   .summary-empty{font-size:11px; color:#a89a83;}
 
+  /* --- Client funds (materials): visually separated from personal money, neutral palette --- */
+  .client-card{
+    margin-top:8px;
+    background:#EAF1F0;
+    border-radius:16px;
+    padding:10px 12px;
+    border:1px dashed rgba(46,158,150,0.35);
+  }
+  .client-balance{
+    font-size:11px;
+    font-weight:800;
+    color:#2E9E96;
+  }
+  .client-note{
+    font-size:10px;
+    color:#5a7d79;
+    font-weight:600;
+    margin-bottom:8px;
+    line-height:1.4;
+  }
+  .client-tx{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:4px 0;
+    font-size:11px;
+    color:#3a5a55;
+    border-bottom:1px solid rgba(46,158,150,0.15);
+  }
+  .client-tx:last-child{border-bottom:none;}
+  .client-tx .amt.income{color:#2E9E96; font-weight:800;}
+  .client-tx .amt.expense{color:var(--coral); font-weight:800;}
+  .client-empty{font-size:11px; color:#7a9d98;}
+  .client-add-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:5px;
+    margin-top:8px;
+  }
+  .client-add-row input{
+    flex:1;
+    min-width:70px;
+    border:2px solid rgba(46,158,150,0.3);
+    border-radius:9px;
+    padding:6px 8px;
+    font-family:'Nunito',sans-serif;
+    font-size:11.5px;
+    font-weight:700;
+  }
+  .client-add-row button{
+    border:none;
+    border-radius:9px;
+    padding:6px 10px;
+    font-weight:800;
+    font-size:10.5px;
+    cursor:pointer;
+    color:#fff;
+  }
+  .client-btn-income{background:#2E9E96;}
+  .client-btn-expense{background:var(--coral);}
+
   /* --- Debts: intentionally quiet/compact so a long list doesn't feel heavy --- */
   .debts-card{
     margin-top:8px;
@@ -217,6 +278,28 @@
     font-size:12px;
     white-space:nowrap;
   }
+
+  .client-row{
+    margin-top:10px;
+    padding-top:10px;
+    border-top:1px dashed rgba(46,158,150,0.35);
+  }
+  .client-row-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:6px;
+  }
+  .client-row-head span{
+    font-size:12.5px;
+    font-weight:800;
+    color:#1E6E67;
+  }
+  .client-purchase-btn{
+    background:var(--coral);
+  }
+  .client-row .source-add-row button{background:#2E9E96;}
+  .client-row .source-add-row input{border-color:rgba(46,158,150,0.35);}
 
   .header{
     display:flex;
@@ -489,11 +572,17 @@
   .board-head{
     display:flex;
     justify-content:space-between;
-    align-items:center;
+    align-items:flex-start;
     margin-bottom:10px;
     padding:0 2px;
   }
   .board-head h2{font-size:15px;}
+  .counters-col{
+    display:flex;
+    flex-direction:column;
+    gap:5px;
+    align-items:flex-end;
+  }
   .sum-counter{
     background:var(--sun);
     color:#7A5300;
@@ -501,6 +590,12 @@
     font-size:13px;
     padding:5px 13px;
     border-radius:20px;
+  }
+  .sum-counter.client-counter{
+    background:#D5EDEA;
+    color:#1E6E67;
+    font-size:11.5px;
+    padding:4px 11px;
   }
   .board{
     display:grid;
@@ -613,6 +708,7 @@
       <button class="icon-btn" onclick="exportData()" title="Скачать резервную копию данных">💾 Сохранить</button>
       <button class="icon-btn" onclick="document.getElementById('importFile').click()" title="Загрузить данные из файла">📂 Загрузить</button>
       <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importData(event)">
+      <button class="add-btn client-purchase-btn" onclick="openPurchaseModal()">🛒 Закупка</button>
       <button class="add-btn" onclick="openModal()">+ Добавить заказ</button>
     </div>
   </div>
@@ -636,6 +732,16 @@
         </div>
         <div id="sourcesContent" class="section-content collapsed">
           <div id="sourcesList"></div>
+
+          <div class="client-row">
+            <div class="client-row-head">
+              <span>👥 Клиенты (на материалы)</span>
+            </div>
+            <div class="source-add-row">
+              <input id="fClientAmount" type="text" inputmode="decimal" placeholder="Сумма, грн">
+              <button onclick="addClientIncome()">Приход</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -674,7 +780,10 @@
       <div class="board-card">
         <div class="board-head">
           <h2>🎯 Доска</h2>
-          <div class="sum-counter">💰 <span id="totalSumDisplay">0</span> грн</div>
+          <div class="counters-col">
+            <div class="sum-counter">💰 <span id="totalSumDisplay">0</span> грн</div>
+            <div class="sum-counter client-counter">👥 <span id="clientBalanceDisplay">0</span> грн</div>
+          </div>
         </div>
         <div class="board" id="board"></div>
       </div>
@@ -755,6 +864,40 @@
   </div>
 </div>
 
+<div class="overlay" id="purchaseOverlay">
+  <div class="modal">
+    <h2>Закупка материалов</h2>
+    <div id="purchaseFormStep">
+      <div id="purchaseAvailable" style="font-size:12px; font-weight:800; color:#1E6E67; background:#EAF1F0; padding:7px 10px; border-radius:10px; margin-bottom:12px;"></div>
+      <div class="field">
+        <label>Категория</label>
+        <select id="fPurchaseCategory">
+          <option value="Ткань">Ткань</option>
+          <option value="Стразы">Стразы</option>
+          <option value="Расходный материал">Расходный материал</option>
+          <option value="Краска">Краска</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Сумма, грн</label>
+        <input id="fPurchaseAmount" type="text" inputmode="decimal" placeholder="Например: 350">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closePurchaseModal()">Отмена</button>
+        <button class="btn-save" onclick="proceedToPurchasePicker()">Списать</button>
+      </div>
+      <div id="purchaseError" style="color:#B5483D; font-size:12px; font-weight:700; margin-top:8px; display:none;"></div>
+    </div>
+    <div id="purchasePickerStep" style="display:none;">
+      <div style="font-size:12.5px; color:#7a7264; font-weight:700; margin-bottom:12px;">Выбери, из какого кристаллика списать</div>
+      <div id="purchaseIconGrid" style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:6px;"></div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closePurchaseModal()">Отмена</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 let orders = [];
 let archivedOrders = [];
@@ -778,7 +921,8 @@ let debtIdCounter = 1;
 
 const SOURCE_ICONS = {
   'Пошив костюмов': ['🪡','🧵','✂️'],
-  'От Провидения': ['🍬','🍭','🍰']
+  'От Провидения': ['🍬','🍭','🍰'],
+  'Клиенты': ['💎','💎','💎'] // same icon at every tier — value grows, look never changes
 };
 
 function tierForAmount(amt){
@@ -799,6 +943,10 @@ let selectedCellIdx = null;
 let totalSum = 0;
 let incomeLog = [];  // {date:'YYYY-MM-DD', category, amount}
 let expenseLog = []; // {date:'YYYY-MM-DD', category, amount}
+
+// Client money for materials — fully separate ledger, never touches totalSum/board/orders.
+let clientTx = []; // {id, type:'income'|'expense', label, amount, date}
+let clientTxIdCounter = 1;
 
 // once an item reaches the top tier of its category, further same-icon merges assemble pieces
 // toward a final icon (e.g. cake slices -> whole cake) instead of stopping
@@ -971,14 +1119,14 @@ function payOrder(id){
 
   const grid = document.getElementById('payIconGrid');
   const usableIndexes = boardCells
-    .map((c, i) => (c && c.value >= order.sum) ? i : null)
+    .map((c, i) => (c && c.category !== 'Клиенты' && c.value >= order.sum) ? i : null)
     .filter(i => i !== null);
 
   if(usableIndexes.length === 0){
-    const hasAny = boardCells.some(c => c !== null);
+    const hasAny = boardCells.some(c => c !== null && c.category !== 'Клиенты');
     grid.innerHTML = hasAny
       ? `<div style="font-size:12.5px; color:#8a7264;">Ни в одной иконке не хватает суммы (нужно ${order.sum.toLocaleString('ru-RU')} грн) — накопи ещё или объедини иконки слиянием.</div>`
-      : '<div style="font-size:12.5px; color:#8a7264;">На доске пока нет иконок для оплаты.</div>';
+      : '<div style="font-size:12.5px; color:#8a7264;">На доске пока нет иконок для оплаты (деньги клиентов сюда не считаются).</div>';
   } else {
     grid.innerHTML = usableIndexes.map(i => `
       <div class="icon-choice" onclick="confirmPay(${i})" style="flex-direction:column; gap:2px;">
@@ -1208,6 +1356,107 @@ function setQuickDate(offsetDays){
 function todayStr(){
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function addClientIncome(){
+  const amountInput = document.getElementById('fClientAmount');
+  const amount = parseFloat(amountInput.value.replace(',', '.'));
+  if(!amount || amount <= 0) return;
+
+  const emptyIdx = boardCells.findIndex(c => c === null);
+  if(emptyIdx !== -1){
+    boardCells[emptyIdx] = {icon: tierIcon('Клиенты', amount), category:'Клиенты', value:amount, pieces:1};
+    renderBoard();
+  }
+
+  clientTx.push({id: clientTxIdCounter++, type:'income', label:'Приход от клиента', amount, date: todayStr()});
+  amountInput.value = '';
+  renderClientFunds();
+}
+
+let purchasingCategory = null;
+let purchasingAmount = null;
+
+function openPurchaseModal(){
+  document.getElementById('purchaseError').style.display = 'none';
+  document.getElementById('fPurchaseAmount').value = '';
+  document.getElementById('purchaseFormStep').style.display = 'block';
+  document.getElementById('purchasePickerStep').style.display = 'none';
+
+  const clientItems = boardCells.filter(c => c && c.category === 'Клиенты');
+  const availEl = document.getElementById('purchaseAvailable');
+  if(clientItems.length === 0){
+    availEl.textContent = '💎 Пока нет денег от клиентов на доске — сначала добавь приход.';
+  } else {
+    const total = clientItems.reduce((s,c) => s + c.value, 0);
+    const pieces = clientItems.map(c => c.value.toLocaleString('ru-RU')).join(', ');
+    availEl.textContent = `💎 Доступно: ${total.toLocaleString('ru-RU')} грн (кристаллики: ${pieces})`;
+  }
+
+  document.getElementById('purchaseOverlay').classList.add('show');
+}
+function closePurchaseModal(){
+  document.getElementById('purchaseOverlay').classList.remove('show');
+  purchasingCategory = null;
+  purchasingAmount = null;
+}
+
+function proceedToPurchasePicker(){
+  const category = document.getElementById('fPurchaseCategory').value;
+  const amount = parseFloat(document.getElementById('fPurchaseAmount').value.replace(',', '.'));
+  const errEl = document.getElementById('purchaseError');
+  if(!amount || amount <= 0){
+    errEl.textContent = 'Впиши корректную сумму';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const usableIndexes = boardCells
+    .map((c, i) => (c && c.category === 'Клиенты' && c.value >= amount) ? i : null)
+    .filter(i => i !== null);
+
+  const grid = document.getElementById('purchaseIconGrid');
+  if(usableIndexes.length === 0){
+    const hasAny = boardCells.some(c => c && c.category === 'Клиенты');
+    grid.innerHTML = hasAny
+      ? `<div style="font-size:12.5px; color:#8a7264;">Ни в одном кристаллике не хватает суммы (нужно ${amount.toLocaleString('ru-RU')} грн) — объедини кристаллики слиянием или добавь ещё приход.</div>`
+      : '<div style="font-size:12.5px; color:#8a7264;">Пока нет денег от клиентов на доске.</div>';
+  } else {
+    grid.innerHTML = usableIndexes.map(i => `
+      <div class="icon-choice" onclick="finalizePurchase(${i})" style="flex-direction:column; gap:2px;">
+        <div>${boardCells[i].icon}</div>
+        <div style="font-size:9px; font-weight:800; color:#8a7264;">${boardCells[i].value.toLocaleString('ru-RU')}</div>
+      </div>
+    `).join('');
+  }
+
+  purchasingCategory = category;
+  purchasingAmount = amount;
+  document.getElementById('purchaseFormStep').style.display = 'none';
+  document.getElementById('purchasePickerStep').style.display = 'block';
+}
+
+function finalizePurchase(cellIdx){
+  const item = boardCells[cellIdx];
+  if(!item || purchasingAmount == null) return;
+
+  const remaining = item.value - purchasingAmount;
+  boardCells[cellIdx] = remaining <= 0
+    ? null
+    : {icon: item.icon, category: item.category, value: remaining, pieces:1};
+
+  clientTx.push({id: clientTxIdCounter++, type:'expense', label: purchasingCategory, amount: purchasingAmount, date: todayStr()});
+
+  closePurchaseModal();
+  renderClientFunds();
+  renderBoard();
+}
+
+function renderClientFunds(){
+  const balanceEl = document.getElementById('clientBalanceDisplay');
+  if(!balanceEl) return;
+  const balance = clientTx.reduce((s,t) => s + (t.type === 'income' ? t.amount : -t.amount), 0);
+  balanceEl.textContent = balance.toLocaleString('ru-RU');
 }
 
 function renderSummary(){
@@ -1571,7 +1820,8 @@ function exportData(){
     sources, sourceIdCounter,
     debts, debtIdCounter,
     boardCells, totalSum,
-    incomeLog, expenseLog
+    incomeLog, expenseLog,
+    clientTx, clientTxIdCounter
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -1607,10 +1857,13 @@ function importData(event){
       totalSum = data.totalSum || 0;
       incomeLog = data.incomeLog || [];
       expenseLog = data.expenseLog || [];
+      clientTx = data.clientTx || [];
+      clientTxIdCounter = data.clientTxIdCounter || 1;
       selectedCellIdx = null;
 
       renderSources();
       renderSummary();
+      renderClientFunds();
       renderDebts();
       renderOrders();
       renderArchive();
@@ -1625,6 +1878,7 @@ function importData(event){
 
 renderSources();
 renderSummary();
+renderClientFunds();
 renderDebts();
 renderOrders();
 renderArchive();
