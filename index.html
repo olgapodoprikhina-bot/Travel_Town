@@ -86,7 +86,16 @@
     gap:16px;
     align-items:start;
   }
-  @media(max-width:680px){ .layout{grid-template-columns:1fr;} }
+  @media(max-width:680px){
+    .layout{grid-template-columns:1fr;}
+    .board-cell{font-size:26px;}
+    .board-cell .cell-value{font-size:11px;}
+    .order-card{width:118px;}
+    .order-card .name{font-size:13.5px;}
+    .cat-section-title, .cat-section-meta{font-size:12px;}
+    .wallet-fab-wrap{bottom:calc(24px + env(safe-area-inset-bottom, 0px));}
+    .wallet-fab{width:60px; height:60px;}
+  }
 
   .sources-card{
     background:var(--cream);
@@ -832,8 +841,9 @@
   }
   .wallet-fab-wrap{
     position:fixed;
-    bottom:18px; right:18px;
-    z-index:9;
+    bottom:calc(18px + env(safe-area-inset-bottom, 0px));
+    right:calc(18px + env(safe-area-inset-right, 0px));
+    z-index:999;
   }
   .wallet-fab{
     position:relative;
