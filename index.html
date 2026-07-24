@@ -678,12 +678,12 @@
   }
   .board{
     display:grid;
-    grid-template-columns:repeat(5, 1fr);
-    grid-template-rows:repeat(7, 1fr);
+    grid-template-columns:repeat(7, 1fr);
+    grid-template-rows:repeat(5, 1fr);
     gap:0;
     border-radius:12px;
     overflow:hidden;
-    aspect-ratio:5/7;
+    aspect-ratio:7/5;
     width:100%;
   }
   .board-cell{
@@ -1133,7 +1133,7 @@ function tierIcon(category, value){
   return icons[tierForAmount(value)];
 }
 
-const BOARD_COLS = 5, BOARD_ROWS = 7;
+const BOARD_COLS = 7, BOARD_ROWS = 5;
 // each cell is null or {icon, category, value}
 let boardCells = new Array(BOARD_COLS*BOARD_ROWS).fill(null);
 let selectedCellIdx = null;
