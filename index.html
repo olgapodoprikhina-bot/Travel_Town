@@ -1177,6 +1177,12 @@ function renderOrderCard(o){
 
 function renderOrders(){
   const container = document.getElementById('ordersByCategory');
+
+  // migrate any legacy category names (e.g. the old single "Константа") so nothing gets orphaned
+  orders.forEach(o => {
+    if(o.category === 'Константа') o.category = 'Константа: Кредит';
+  });
+
   if(orders.length === 0){
     container.innerHTML = '<div class="empty-orders">Пока нет заказов — нажми "Добавить заказ" выше.</div>';
     renderCalendar();
@@ -1200,9 +1206,12 @@ function renderOrders(){
     `;
   }
 
+  const seenIds = new Set();
+
   CATEGORY_ORDER.forEach(cat => {
     const inCat = rest.filter(o => o.category === cat).sort((a,b) => daysUntil(a.dueDate) - daysUntil(b.dueDate));
     if(inCat.length === 0) return;
+    inCat.forEach(o => seenIds.add(o.id));
     const key = 'cat-' + cat;
     const total = inCat.reduce((s,o) => s + o.sum, 0);
     const isOpen = openSections.has(key);
@@ -1222,6 +1231,28 @@ function renderOrders(){
     </div>
     `;
   });
+
+  // safety net: any non-urgent order whose category didn't match a known bucket still gets shown, not hidden
+  const orphaned = rest.filter(o => !seenIds.has(o.id)).sort((a,b) => daysUntil(a.dueDate) - daysUntil(b.dueDate));
+  if(orphaned.length > 0){
+    const key = 'cat-other';
+    const total = orphaned.reduce((s,o) => s + o.sum, 0);
+    const isOpen = openSections.has(key);
+    html += `
+    <div class="cat-section">
+      <div class="cat-section-toggle" onclick="toggleSection('${key}')">
+        <div class="cat-section-title">
+          <span class="cat-dot" style="background:#a89a83"></span>
+          Другое
+        </div>
+        <div class="cat-section-meta">${orphaned.length} шт · ${total.toLocaleString('ru-RU')} грн <span class="toggle-arrow" id="arrow-${key}">${isOpen?'▾':'▸'}</span></div>
+      </div>
+      <div class="orders-strip cat-section-content${isOpen?'':' collapsed'}" data-key="${key}">
+        ${orphaned.map(renderOrderCard).join('')}
+      </div>
+    </div>
+    `;
+  }
 
   container.innerHTML = html;
   renderCalendar();
