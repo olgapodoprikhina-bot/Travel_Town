@@ -1120,6 +1120,7 @@
       <button class="icon-btn icon-only" onclick="document.getElementById('importFile').click()" title="Завантажити дані з файлу">📂</button>
       <button class="icon-btn icon-only" onclick="openModal()" title="Додати замовлення">➕</button>
       <button class="icon-btn icon-only" onclick="openQuickOrderModal()" title="Швидке замовлення">⚡</button>
+      <button class="icon-btn icon-only" onclick="openPurchaseModal()" title="Закупівля для клієнта">✂️</button>
       <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importData(event)">
     </div>
   </div>
@@ -1237,6 +1238,7 @@
   </div>
   <div id="ordersByCategory"></div>
   <div class="cat-section" id="clientPurchaseSection" style="display:none;"></div>
+  <div class="cat-section" id="actualSection" style="display:none;"></div>
   <div class="cat-section" id="paidOrdersSection" style="display:none;">
     <div class="cat-section-toggle" onclick="toggleSection('paidOrders')">
       <div class="cat-section-title">
@@ -3431,22 +3433,30 @@ function renderOrders(){
   }
 
   // everything else (Прожитковий мінімум, Непередбачені витрати, Дуже треба, and any
-  // unrecognized category) — always shown in full, never collapsed, never moved to "Срочно"
+  // unrecognized category) — now collapsible too, rendered into its own container after "Ательє"
   const actual = rest.filter(o => !seenIds.has(o.id)).sort((a,b) => daysUntil(a.dueDate) - daysUntil(b.dueDate));
-  if(actual.length > 0){
-    const total = actual.reduce((s,o) => s + o.sum, 0);
-    html += `
-    <div class="cat-section">
-      <div class="cat-section-title" style="margin-bottom:8px;">
-        <span class="cat-dot" style="background:#a89a83"></span>
-        Актуальне
-        <span style="font-weight:700; color:#7a7264; margin-left:6px;">${actual.length} шт · ${total.toLocaleString('uk-UA')} грн</span>
-      </div>
-      <div class="orders-strip">
-        ${actual.map(renderOrderCard).join('')}
-      </div>
-    </div>
-    `;
+  const actualSection = document.getElementById('actualSection');
+  if(actualSection){
+    if(actual.length === 0){
+      actualSection.style.display = 'none';
+    } else {
+      actualSection.style.display = 'block';
+      const actualKey = 'actual';
+      const actualOpen = openSections.has(actualKey);
+      const actualTotal = actual.reduce((s,o) => s + o.sum, 0);
+      actualSection.innerHTML = `
+        <div class="cat-section-toggle" onclick="toggleSection('${actualKey}')">
+          <div class="cat-section-title">
+            <span class="cat-dot" style="background:#a89a83"></span>
+            Актуальне
+          </div>
+          <div class="cat-section-meta">${actual.length} шт · ${actualTotal.toLocaleString('uk-UA')} грн <span class="toggle-arrow" id="arrow-${actualKey}">${actualOpen?'▾':'▸'}</span></div>
+        </div>
+        <div class="orders-strip cat-section-content${actualOpen?'':' collapsed'}" data-key="${actualKey}">
+          ${actual.map(renderOrderCard).join('')}
+        </div>
+      `;
+    }
   }
 
   container.innerHTML = html;
