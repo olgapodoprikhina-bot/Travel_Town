@@ -1343,7 +1343,7 @@
 
 <div class="overlay" id="purchaseOverlay">
   <div class="modal">
-    <h2>💎 Створити замовлення на матеріали</h2>
+    <h2 id="purchaseModalTitle">💎 Створити замовлення на матеріали</h2>
     <div id="purchaseFormStep">
       <div id="purchaseAvailable" style="font-size:12px; font-weight:800; color:#1E6E67; background:#EAF1F0; padding:7px 10px; border-radius:10px; margin-bottom:12px;"></div>
       <div class="field">
@@ -1365,9 +1365,13 @@
         <label>Орієнтовна сума, грн (можна змінити пізніше)</label>
         <input id="fPurchaseAmount" type="text" inputmode="decimal" placeholder="Наприклад: 350">
       </div>
+      <div class="field">
+        <label>Магазин / примітка (за бажанням)</label>
+        <input id="fPurchaseNote" type="text" placeholder="Наприклад: тканина.юа, доставка">
+      </div>
       <div class="modal-actions">
         <button class="btn-cancel" onclick="closePurchaseModal()">Скасувати</button>
-        <button class="btn-save" onclick="addToClientPurchaseQueue()">Додати в чергу</button>
+        <button class="btn-save" id="purchaseSaveBtn" onclick="addToClientPurchaseQueue()">Додати в чергу</button>
       </div>
       <div id="purchaseError" style="color:#B5483D; font-size:12px; font-weight:700; margin-top:8px; display:none;"></div>
     </div>
@@ -2437,9 +2441,16 @@ function addClientIncome(){
 let clientPurchaseQueue = []; // {id, clientId, clientName, category, sum, createdDate}
 let clientPurchaseIdCounter = 1;
 
+let editingPurchaseId = null;
+
 function openPurchaseModal(){
+  editingPurchaseId = null;
+  document.getElementById('purchaseModalTitle').textContent = '💎 Створити замовлення на матеріали';
+  document.getElementById('purchaseSaveBtn').textContent = 'Додати в чергу';
   document.getElementById('purchaseError').style.display = 'none';
   document.getElementById('fPurchaseAmount').value = '';
+  document.getElementById('fPurchaseNote').value = '';
+  document.getElementById('fPurchaseCategory').value = 'Тканина';
 
   const clientSel = document.getElementById('fPurchaseClient');
   const activeClients = clientCards.filter(c => !c.closed);
@@ -2457,8 +2468,23 @@ function openPurchaseModal(){
 
   document.getElementById('purchaseOverlay').classList.add('show');
 }
+
+function editClientPurchase(id){
+  const purchase = clientPurchaseQueue.find(p => p.id === id);
+  if(!purchase) return;
+  openPurchaseModal();
+  editingPurchaseId = id;
+  document.getElementById('purchaseModalTitle').textContent = '✎ Змінити замовлення';
+  document.getElementById('purchaseSaveBtn').textContent = 'Зберегти';
+  document.getElementById('fPurchaseClient').value = purchase.clientId || '';
+  document.getElementById('fPurchaseCategory').value = purchase.category;
+  document.getElementById('fPurchaseAmount').value = purchase.sum;
+  document.getElementById('fPurchaseNote').value = purchase.note || '';
+}
+
 function closePurchaseModal(){
   document.getElementById('purchaseOverlay').classList.remove('show');
+  editingPurchaseId = null;
 }
 
 function addToClientPurchaseQueue(){
@@ -2467,6 +2493,7 @@ function addToClientPurchaseQueue(){
   const clientId = clientSel.value ? parseInt(clientSel.value) : null;
   const clientCard = clientId ? clientCards.find(c => c.id === clientId) : null;
   const amount = parseFloat(document.getElementById('fPurchaseAmount').value.replace(',', '.'));
+  const note = document.getElementById('fPurchaseNote').value.trim();
   const errEl = document.getElementById('purchaseError');
   if(!amount || amount <= 0){
     errEl.textContent = 'Впиши правильну суму';
@@ -2475,14 +2502,26 @@ function addToClientPurchaseQueue(){
   }
   errEl.style.display = 'none';
 
-  clientPurchaseQueue.push({
-    id: clientPurchaseIdCounter++,
-    clientId: clientCard ? clientCard.id : null,
-    clientName: clientCard ? clientCard.name : 'Без клієнта',
-    category,
-    sum: amount,
-    createdDate: todayStr()
-  });
+  if(editingPurchaseId){
+    const purchase = clientPurchaseQueue.find(p => p.id === editingPurchaseId);
+    if(purchase){
+      Object.assign(purchase, {
+        clientId: clientCard ? clientCard.id : null,
+        clientName: clientCard ? clientCard.name : 'Без клієнта',
+        category, sum: amount, note
+      });
+    }
+  } else {
+    clientPurchaseQueue.push({
+      id: clientPurchaseIdCounter++,
+      clientId: clientCard ? clientCard.id : null,
+      clientName: clientCard ? clientCard.name : 'Без клієнта',
+      category,
+      sum: amount,
+      note,
+      createdDate: todayStr()
+    });
+  }
 
   closePurchaseModal();
   renderClientPurchaseQueue();
@@ -2588,11 +2627,13 @@ function renderClientPurchaseQueue(){
       ${byClient[clientName].map(p => `
         <div class="order-card" style="--cat-color:#C9A030">
           <div class="card-controls">
+            <button class="ctrl-btn" onclick="editClientPurchase(${p.id})" title="Змінити">✎</button>
             <button class="ctrl-btn" onclick="deleteClientPurchase(${p.id})" title="Видалити">✕</button>
           </div>
           <div class="name">${escapeHtml(p.category)}</div>
           <div class="sum">${p.sum.toLocaleString('uk-UA')} грн</div>
           <div class="cat">Ательє</div>
+          ${p.note ? `<div class="due-badge" style="background:#FFF3D6; color:#8a6a15;">${escapeHtml(p.note)}</div>` : ''}
           <button class="pay-btn" style="background:#C9A030;" onclick="openExecutePurchaseModal(${p.id})">💎 Провести</button>
         </div>
       `).join('')}
