@@ -1483,6 +1483,11 @@ const JAR_INDEX = BOARD_COLS * 2 + (BOARD_COLS - 1); // 3rd row, rightmost colum
 
 let jar10Balance = 0; // "банка 10%" — deposit-only, always exactly 10% of a chosen icon's value
 
+// when a single occurrence of a recurring order is deleted, we remember it here so
+// generateRecurringConstantInstances doesn't just recreate it again on the next render —
+// the rest of the series (past and future) keeps working normally.
+let skippedRecurringInstances = []; // [{templateId, date}]
+
 // Progress tracking for the wallet's "прогресс" summary
 let debtBaseline = null; // total debts the first time we ever had any — snapshot, never changes after
 let totalDebtPaid = 0;   // running total of principal paid off across all debts
@@ -1656,6 +1661,12 @@ function editOrder(id){
 }
 
 function deleteOrderDraft(id){
+  const order = orders.find(o => o.id === id);
+  if(order && order.recurring && order.templateId && order.dueDate){
+    // remember this exact month was deleted on purpose, so it won't be recreated —
+    // the rest of the series (other months) keeps working normally
+    skippedRecurringInstances.push({templateId: order.templateId, date: order.dueDate});
+  }
   orders = orders.filter(o => o.id !== id);
   renderOrders();
 }
@@ -2699,6 +2710,9 @@ function generateRecurringConstantInstances(){
     const alreadyExists = instances.some(o => o.dueDate === expectedDate);
     if(alreadyExists) return;
 
+    const wasSkipped = skippedRecurringInstances.some(s => s.templateId === tid && s.date === expectedDate);
+    if(wasSkipped) return;
+
     orders.push({
       id: idCounter++,
       templateId: tid,
@@ -3017,7 +3031,8 @@ function gatherState(){
     boardCells, totalSum, jarBalance, jar10Balance,
     incomeLog, expenseLog,
     clientTx, clientTxIdCounter,
-    debtBaseline, totalDebtPaid, totalDebtGrown
+    debtBaseline, totalDebtPaid, totalDebtGrown,
+    skippedRecurringInstances
   };
 }
 
@@ -3040,6 +3055,7 @@ function applyState(data){
   debtBaseline = (data.debtBaseline === undefined) ? null : data.debtBaseline;
   totalDebtPaid = data.totalDebtPaid || 0;
   totalDebtGrown = data.totalDebtGrown || 0;
+  skippedRecurringInstances = data.skippedRecurringInstances || [];
   selectedCellIdx = null;
   if(boardCells.length > JAR_INDEX) boardCells[JAR_INDEX] = null; // JAR_INDEX is always reserved for the jar
   if(boardCells.length > JAR10_INDEX) boardCells[JAR10_INDEX] = null; // JAR10_INDEX is always reserved for the 10% jar
