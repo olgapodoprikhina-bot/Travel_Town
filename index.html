@@ -436,6 +436,28 @@
     font-weight:800;
     color:#1E6E67;
   }
+  .client-card-mini{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    background:#fff;
+    border-radius:9px;
+    padding:5px 8px;
+    margin-bottom:4px;
+    font-size:11px;
+    font-weight:700;
+    color:#2E6B65;
+  }
+  .client-card-mini button{
+    border:none;
+    background:none;
+    color:#a89a83;
+    font-size:9.5px;
+    font-weight:800;
+    cursor:pointer;
+    padding:2px 5px;
+  }
+  .client-card-mini button:hover{color:var(--coral);}
   .client-purchase-btn{
     background:var(--coral);
   }
@@ -1127,8 +1149,10 @@
             <div class="client-row-head">
               <span>👥 Клієнти (на матеріали)</span>
             </div>
+            <div id="activeClientCardsList"></div>
             <div class="source-add-row" style="margin-bottom:5px;">
-              <input id="fClientName" type="text" placeholder="Від кого">
+              <input id="fClientName" type="text" placeholder="Від кого" list="knownClientsList">
+              <datalist id="knownClientsList"></datalist>
             </div>
             <div class="source-add-row">
               <input id="fClientAmount" type="text" inputmode="decimal" placeholder="Сума, грн">
@@ -1311,8 +1335,10 @@
     <div id="purchaseFormStep">
       <div id="purchaseAvailable" style="font-size:12px; font-weight:800; color:#1E6E67; background:#EAF1F0; padding:7px 10px; border-radius:10px; margin-bottom:12px;"></div>
       <div class="field">
-        <label>Для якого клієнта (за бажанням)</label>
-        <input id="fPurchaseClient" type="text" placeholder="Наприклад: Ольга">
+        <label>Для якого клієнта</label>
+        <select id="fPurchaseClient">
+          <option value="">— не вказано —</option>
+        </select>
       </div>
       <div class="field">
         <label>Категорія</label>
@@ -1595,7 +1621,24 @@ let incomeLog = [];  // {date:'YYYY-MM-DD', category, amount}
 let expenseLog = []; // {date:'YYYY-MM-DD', category, amount}
 
 // Client money for materials — fully separate ledger, never touches totalSum/board/orders.
-let clientTx = []; // {id, type:'income'|'expense', label, amount, date}
+let clientTx = []; // {id, type:'income'|'expense', label, clientId, amount, date}
+let archivedClientTx = []; // transactions belonging to closed client cards
+
+// A client "card" — created automatically the first time she logs income "from" that name.
+// Closing a card removes it from active dropdowns and archives all its transactions.
+let clientCards = []; // {id, name, closed}
+let clientCardIdCounter = 1;
+
+function findOrCreateClientCard(name){
+  const trimmed = name.trim();
+  if(!trimmed) return null;
+  let card = clientCards.find(c => c.name.toLowerCase() === trimmed.toLowerCase() && !c.closed);
+  if(!card){
+    card = {id: clientCardIdCounter++, name: trimmed, closed: false};
+    clientCards.push(card);
+  }
+  return card;
+}
 let clientTxIdCounter = 1;
 
 // once an item reaches the top tier of its category, further same-icon merges assemble pieces
@@ -2355,13 +2398,15 @@ function addClientIncome(){
   const amount = parseFloat(amountInput.value.replace(',', '.'));
   if(!amount || amount <= 0) return;
 
+  const card = clientName ? findOrCreateClientCard(clientName) : null;
+
   const emptyIdx = findEmptyBoardIndex();
   if(emptyIdx !== -1){
     boardCells[emptyIdx] = {icon: tierIcon('Клієнти', amount), category:'Клієнти', value:amount, pieces:1};
     renderBoard();
   }
 
-  clientTx.push({id: clientTxIdCounter++, type:'income', label: clientName ? ('Від ' + clientName) : 'Надходження від клієнта', amount, date: todayStr()});
+  clientTx.push({id: clientTxIdCounter++, type:'income', label: card ? ('Від ' + card.name) : 'Надходження від клієнта', clientId: card ? card.id : null, amount, date: todayStr()});
   nameInput.value = '';
   amountInput.value = '';
   renderClientFunds();
@@ -2370,11 +2415,17 @@ function addClientIncome(){
 let purchasingCategory = null;
 let purchasingAmount = null;
 let purchasingClient = null;
+let purchasingClientId = null;
 
 function openPurchaseModal(){
   document.getElementById('purchaseError').style.display = 'none';
   document.getElementById('fPurchaseAmount').value = '';
-  document.getElementById('fPurchaseClient').value = '';
+
+  const clientSel = document.getElementById('fPurchaseClient');
+  const activeClients = clientCards.filter(c => !c.closed);
+  clientSel.innerHTML = '<option value="">— не вказано —</option>' +
+    activeClients.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+
   document.getElementById('purchaseFormStep').style.display = 'block';
   document.getElementById('purchasePickerStep').style.display = 'none';
 
@@ -2395,11 +2446,14 @@ function closePurchaseModal(){
   purchasingCategory = null;
   purchasingAmount = null;
   purchasingClient = null;
+  purchasingClientId = null;
 }
 
 function proceedToPurchasePicker(){
   const category = document.getElementById('fPurchaseCategory').value;
-  const client = document.getElementById('fPurchaseClient').value.trim();
+  const clientSel = document.getElementById('fPurchaseClient');
+  const clientId = clientSel.value ? parseInt(clientSel.value) : null;
+  const clientCard = clientId ? clientCards.find(c => c.id === clientId) : null;
   const amount = parseFloat(document.getElementById('fPurchaseAmount').value.replace(',', '.'));
   const errEl = document.getElementById('purchaseError');
   if(!amount || amount <= 0){
@@ -2429,7 +2483,8 @@ function proceedToPurchasePicker(){
 
   purchasingCategory = category;
   purchasingAmount = amount;
-  purchasingClient = client || null;
+  purchasingClient = clientCard ? clientCard.name : null;
+  purchasingClientId = clientCard ? clientCard.id : null;
   document.getElementById('purchaseFormStep').style.display = 'none';
   document.getElementById('purchasePickerStep').style.display = 'block';
 }
@@ -2659,7 +2714,7 @@ function finalizePurchase(cellIdx){
     ? null
     : {icon: item.icon, category: item.category, value: remaining, pieces:1};
 
-  clientTx.push({id: clientTxIdCounter++, type:'expense', label: purchasingCategory, client: purchasingClient, amount: purchasingAmount, date: todayStr()});
+  clientTx.push({id: clientTxIdCounter++, type:'expense', label: purchasingCategory, client: purchasingClient, clientId: purchasingClientId, amount: purchasingAmount, date: todayStr()});
 
   closePurchaseModal();
   renderClientFunds();
@@ -2671,8 +2726,54 @@ function renderClientFunds(){
   if(!balanceEl) return;
   const balance = clientTx.reduce((s,t) => s + (t.type === 'income' ? t.amount : -t.amount), 0);
   balanceEl.textContent = balance.toLocaleString('uk-UA');
+  renderClientCards();
   renderPurchaseTransfer();
   scheduleSync();
+}
+
+function renderClientCards(){
+  const listEl = document.getElementById('activeClientCardsList');
+  const datalistEl = document.getElementById('knownClientsList');
+  if(!listEl) return;
+
+  const active = clientCards.filter(c => !c.closed);
+
+  if(active.length === 0){
+    listEl.innerHTML = '';
+  } else {
+    listEl.innerHTML = active.map(c => {
+      const clientBalance = clientTx
+        .filter(t => t.clientId === c.id)
+        .reduce((s,t) => s + (t.type === 'income' ? t.amount : -t.amount), 0);
+      return `
+        <div class="client-card-mini">
+          <span>${escapeHtml(c.name)} · ${clientBalance.toLocaleString('uk-UA')} грн</span>
+          <button onclick="closeClientCard(${c.id})">Закрити ✕</button>
+        </div>
+      `;
+    }).join('');
+  }
+
+  if(datalistEl){
+    datalistEl.innerHTML = active.map(c => `<option value="${escapeHtml(c.name)}"></option>`).join('');
+  }
+}
+
+function closeClientCard(id){
+  const card = clientCards.find(c => c.id === id);
+  if(!card) return;
+  card.closed = true;
+
+  // archive all of this client's transactions out of the active list
+  const kept = [];
+  clientTx.forEach(t => {
+    if(t.clientId === id) archivedClientTx.push(t);
+    else kept.push(t);
+  });
+  clientTx = kept;
+
+  renderClientFunds();
+  renderBoard();
 }
 
 function renderSummary(){
@@ -3331,9 +3432,10 @@ function gatherState(){
     sources, sourceIdCounter,
     debts, debtIdCounter,
     clientDebts, clientDebtIdCounter,
+    clientCards, clientCardIdCounter,
     boardCells, totalSum, jarBalance, jar10Balance,
     incomeLog, expenseLog,
-    clientTx, clientTxIdCounter,
+    clientTx, archivedClientTx, clientTxIdCounter,
     debtBaseline, totalDebtPaid, totalDebtGrown,
     skippedRecurringInstances
   };
@@ -3350,6 +3452,8 @@ function applyState(data){
   debtIdCounter = data.debtIdCounter || 1;
   clientDebts = data.clientDebts || [];
   clientDebtIdCounter = data.clientDebtIdCounter || 1;
+  clientCards = data.clientCards || [];
+  clientCardIdCounter = data.clientCardIdCounter || 1;
   boardCells = data.boardCells || new Array(BOARD_COLS*BOARD_ROWS).fill(null);
   totalSum = data.totalSum || 0;
   jarBalance = data.jarBalance || 0;
@@ -3357,6 +3461,7 @@ function applyState(data){
   incomeLog = data.incomeLog || [];
   expenseLog = data.expenseLog || [];
   clientTx = data.clientTx || [];
+  archivedClientTx = data.archivedClientTx || [];
   clientTxIdCounter = data.clientTxIdCounter || 1;
   debtBaseline = (data.debtBaseline === undefined) ? null : data.debtBaseline;
   totalDebtPaid = data.totalDebtPaid || 0;
