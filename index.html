@@ -1863,17 +1863,18 @@ function refreshPayIconGrid(){
   const order = orders.find(o => o.id === payingOrderId);
   if(!order) return;
   const payAmount = currentPayAmount();
+  const allowClientMoney = order.category === 'Ательє';
 
   const grid = document.getElementById('payIconGrid');
   const usableIndexes = boardCells
-    .map((c, i) => (c && c.category !== 'Клієнти' && c.value >= payAmount) ? i : null)
+    .map((c, i) => (c && (allowClientMoney || c.category !== 'Клієнти') && c.value >= payAmount) ? i : null)
     .filter(i => i !== null);
 
   if(usableIndexes.length === 0){
-    const hasAny = boardCells.some(c => c !== null && c.category !== 'Клієнти');
+    const hasAny = boardCells.some(c => c !== null && (allowClientMoney || c.category !== 'Клієнти'));
     grid.innerHTML = hasAny
       ? `<div style="font-size:12.5px; color:#8a7264;">Жодній іконці не вистачає суми (потрібно ${payAmount.toLocaleString('uk-UA')} грн) — накопич ще або об'єднай іконки злиттям.</div>`
-      : '<div style="font-size:12.5px; color:#8a7264;">На дошці поки немає іконок для оплати (гроші клієнтів сюди не рахуються).</div>';
+      : `<div style="font-size:12.5px; color:#8a7264;">На дошці поки немає іконок для оплати${allowClientMoney ? '' : ' (гроші клієнтів сюди не рахуються)'}.</div>`;
   } else {
     grid.innerHTML = usableIndexes.map(i => `
       <div class="icon-choice" onclick="confirmPay(${i})" style="flex-direction:column; gap:2px;">
@@ -1898,11 +1899,16 @@ function confirmPay(cellIdx){
 
   const payAmount = currentPayAmount();
   const overpay = payAmount - order.sum;
+  const paidWithClientMoney = item.category === 'Клієнти';
 
   orders.splice(idx,1);
   archivedOrders.push(order);
-  totalSum -= payAmount;
-  expenseLog.push({date: todayStr(), category: order.category, amount: payAmount});
+  if(paidWithClientMoney){
+    clientTx.push({id: clientTxIdCounter++, type:'expense', label: order.category, client: null, amount: payAmount, date: todayStr()});
+  } else {
+    totalSum -= payAmount;
+    expenseLog.push({date: todayStr(), category: order.category, amount: payAmount});
+  }
 
   if(order.debtId){
     const debt = debts.find(d => d.id === order.debtId);
@@ -1929,6 +1935,7 @@ function confirmPay(cellIdx){
   renderDebts();
   renderBoard();
   renderSummary();
+  if(paidWithClientMoney) renderClientFunds();
 }
 
 function toggleArchive(){
