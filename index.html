@@ -539,6 +539,33 @@
   }
 
   /* --- Orders strip --- */
+  .daily-summary-card{
+    background:var(--cream);
+    border-radius:16px;
+    padding:12px 14px;
+    margin-bottom:10px;
+    box-shadow:0 6px 0 rgba(0,0,0,0.1), 0 8px 16px rgba(0,0,0,0.18);
+  }
+  .daily-summary-title{
+    font-size:13px;
+    font-weight:800;
+    color:#4a3d2e;
+    margin-bottom:8px;
+  }
+  .daily-summary-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:6px 0;
+    border-bottom:1px solid rgba(0,0,0,0.06);
+    font-size:12.5px;
+  }
+  .daily-summary-row:last-child{border-bottom:none;}
+  .daily-summary-row .ds-label{color:#6b6255; font-weight:700; display:flex; align-items:center; gap:6px;}
+  .daily-summary-row .ds-vals{text-align:right; font-weight:800;}
+  .daily-summary-row .ds-total{color:#7a7264; font-weight:600; font-size:11px;}
+  .daily-summary-row .ds-remaining{color:var(--coral);}
+  .daily-summary-row.ds-wallet .ds-remaining{color:#7A5300;}
   .urgent-section{
     margin-bottom:10px;
   }
@@ -1116,6 +1143,10 @@
     </div>
 
     <div>
+  <div class="daily-summary-card">
+    <div class="daily-summary-title">📋 Зведення дня</div>
+    <div id="dailySummaryBody"></div>
+  </div>
   <div id="ordersByCategory"></div>
   <div class="archive-toggle" onclick="toggleArchive()" id="archiveToggle">Архів (0)</div>
   <div class="archive-list" id="archiveList"></div>
@@ -2559,6 +2590,49 @@ function migrateLegacyCategories(){
   });
 }
 
+function renderDailySummary(){
+  const body = document.getElementById('dailySummaryBody');
+  if(!body) return;
+
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = today.getMonth();
+  const inThisMonth = e => {
+    const d = new Date(e.date + 'T00:00:00');
+    return d.getFullYear() === y && d.getMonth() === m;
+  };
+
+  function categorySummary(category){
+    const paidThisMonth = expenseLog.filter(e => e.category === category && inThisMonth(e)).reduce((s,e) => s + e.amount, 0);
+    const remaining = orders.filter(o => o.category === category).reduce((s,o) => s + o.sum, 0);
+    return {total: paidThisMonth + remaining, remaining};
+  }
+
+  const komunalka = categorySummary('Константа: Комуналка');
+  const kredyt = categorySummary('Константа: Кредит');
+
+  body.innerHTML = `
+    <div class="daily-summary-row">
+      <span class="ds-label"><span class="cat-dot" style="background:${CAT_COLORS['Константа: Комуналка']}"></span>Комуналка за місяць</span>
+      <span class="ds-vals">
+        <div>${komunalka.total.toLocaleString('uk-UA')} грн <span class="ds-total">всього</span></div>
+        <div class="ds-remaining">${komunalka.remaining.toLocaleString('uk-UA')} грн залишилось</div>
+      </span>
+    </div>
+    <div class="daily-summary-row">
+      <span class="ds-label"><span class="cat-dot" style="background:${CAT_COLORS['Константа: Кредит']}"></span>Кредити за місяць</span>
+      <span class="ds-vals">
+        <div>${kredyt.total.toLocaleString('uk-UA')} грн <span class="ds-total">всього</span></div>
+        <div class="ds-remaining">${kredyt.remaining.toLocaleString('uk-UA')} грн залишилось</div>
+      </span>
+    </div>
+    <div class="daily-summary-row ds-wallet">
+      <span class="ds-label">👛 Вільних грошей у гаманці</span>
+      <span class="ds-vals"><div class="ds-remaining">${totalSum.toLocaleString('uk-UA')} грн</div></span>
+    </div>
+  `;
+}
+
 function renderOrders(){
   const container = document.getElementById('ordersByCategory');
 
@@ -2571,6 +2645,7 @@ function renderOrders(){
   if(orders.length === 0){
     container.innerHTML = '<div class="empty-orders">Поки немає замовлень — натисни "Додати замовлення" вище.</div>';
     renderCalendar();
+    renderDailySummary();
     scheduleSync();
     return;
   }
@@ -2654,6 +2729,7 @@ function renderOrders(){
 
   container.innerHTML = html;
   renderCalendar();
+  renderDailySummary();
   scheduleSync();
 }
 
