@@ -1053,7 +1053,7 @@
     <button onclick="openWalletProgress()">📊 Дізнатись прогрес</button>
     <button onclick="toggleWalletHoverMenu(); openModal()">📝 Додати замовлення</button>
     <button onclick="toggleWalletHoverMenu(); openQuickOrderModal()">⚡ Швидке замовлення</button>
-    <button onclick="toggleWalletHoverMenu(); openPurchaseModal()">🛒 Закупівля</button>
+    <button onclick="toggleWalletHoverMenu(); openPurchaseModal()">💎 Закупівля для клієнта</button>
   </div>
   <button class="wallet-fab" onclick="toggleWalletHoverMenu()" title="Гаманець"><svg viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg">
     <path d="M20 60 C20 42 34 30 54 30 H146 C166 30 180 42 180 60 V120 C180 138 166 150 146 150 H54 C34 150 20 138 20 120 Z" fill="#C9A030" stroke="#8a6a15" stroke-width="6"/>
@@ -1199,6 +1199,16 @@
     <div id="dailySummaryBody"></div>
   </div>
   <div id="ordersByCategory"></div>
+  <div class="cat-section" id="paidOrdersSection" style="display:none;">
+    <div class="cat-section-toggle" onclick="toggleSection('paidOrders')">
+      <div class="cat-section-title">
+        <span class="cat-dot" style="background:#5FCB7A"></span>
+        Оплачені (ще в проекті)
+      </div>
+      <div class="cat-section-meta" id="paidOrdersMeta"><span class="toggle-arrow" id="arrow-paidOrders">▸</span></div>
+    </div>
+    <div class="orders-strip cat-section-content collapsed" data-key="paidOrders" id="paidOrdersList"></div>
+  </div>
   <div class="archive-toggle" onclick="toggleArchive()" id="archiveToggle">Архів (0)</div>
   <div class="archive-list" id="archiveList"></div>
 
@@ -1242,7 +1252,6 @@
       <option value="Річні">Річні</option>
       <option value="Саморозвиток">Саморозвиток</option>
       <option value="Подорож">Подорож</option>
-      <option value="Ательє">Ательє</option>
     </select>
     <div class="field">
       <label>Дата платежу (для фіксованих — обов'язково)</label>
@@ -1298,7 +1307,7 @@
 
 <div class="overlay" id="purchaseOverlay">
   <div class="modal">
-    <h2>Закупівля матеріалів</h2>
+    <h2>💎 Закупівля для клієнта</h2>
     <div id="purchaseFormStep">
       <div id="purchaseAvailable" style="font-size:12px; font-weight:800; color:#1E6E67; background:#EAF1F0; padding:7px 10px; border-radius:10px; margin-bottom:12px;"></div>
       <div class="field">
@@ -1345,7 +1354,6 @@
         <option value="Річні">Річні</option>
         <option value="Саморозвиток">Саморозвиток</option>
         <option value="Подорож">Подорож</option>
-        <option value="Ательє">Ательє</option>
         <option value="Константа: Кредит">Константа: Кредит</option>
         <option value="Константа: Комуналка">Константа: Комуналка</option>
       </select>
@@ -1510,6 +1518,7 @@ let syncTimer = null;
 const LS_STATE_KEY = 'moi_zakazy_state_v1';
 
 let orders = [];
+let paidOrders = []; // paid but not yet archived — stays visible until manually archived
 let archivedOrders = [];
 let idCounter = 1;
 
@@ -1654,8 +1663,7 @@ const EXPENSE_GROUPS = {
   'Комфорт': ['Зовнішній вигляд','Програми','Канцтовари','Кафе','Розваги','Одяг і взуття'],
   'Річні': ['Меблі та дім','Подарунки','Гаджети','Побутова техніка'],
     'Саморозвиток': ['Книги та курси',"Здоров'я і фітнес"],
-  'Подорож': ['Транспорт (подорож)','Проживання','Добові'],
-  'Ательє': ['Тканина','Стрази','Витратні матеріали','Фарба']
+  'Подорож': ['Транспорт (подорож)','Проживання','Добові']
 };
 
 function populateExpenseItemSelect(){
@@ -1902,7 +1910,8 @@ function confirmPay(cellIdx){
   const paidWithClientMoney = item.category === 'Клієнти';
 
   orders.splice(idx,1);
-  archivedOrders.push(order);
+  order.paidDate = todayStr();
+  paidOrders.push(order);
   if(paidWithClientMoney){
     clientTx.push({id: clientTxIdCounter++, type:'expense', label: order.category, client: null, amount: payAmount, date: todayStr()});
   } else {
@@ -1931,6 +1940,7 @@ function confirmPay(cellIdx){
 
   closePayModal();
   renderOrders();
+  renderPaidOrders();
   renderArchive();
   renderDebts();
   renderBoard();
@@ -1955,6 +1965,44 @@ function renderArchive(){
       <span>${o.sum.toLocaleString('uk-UA')} грн</span>
     </div>
   `).join('');
+}
+
+function renderPaidOrders(){
+  const section = document.getElementById('paidOrdersSection');
+  const list = document.getElementById('paidOrdersList');
+  const meta = document.getElementById('paidOrdersMeta');
+  if(!section) return;
+
+  if(paidOrders.length === 0){
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = 'block';
+  const isOpen = openSections.has('paidOrders');
+  const total = paidOrders.reduce((s,o) => s + o.sum, 0);
+  meta.innerHTML = `${paidOrders.length} шт · ${total.toLocaleString('uk-UA')} грн <span class="toggle-arrow" id="arrow-paidOrders">${isOpen?'▾':'▸'}</span>`;
+  list.classList.toggle('collapsed', !isOpen);
+
+  list.innerHTML = paidOrders.slice().reverse().map(o => `
+    <div class="order-card" style="--cat-color:${CAT_COLORS[o.category]||'#5FCB7A'}">
+      <div class="name">${escapeHtml(o.name)}</div>
+      <div class="sum">${o.sum.toLocaleString('uk-UA')} грн</div>
+      <div class="cat">${escapeHtml(o.category)}</div>
+      <div class="due-badge due-ok">Сплачено: ${o.paidDate}</div>
+      <button class="pay-btn" style="background:#8a7264;" onclick="moveToArchive(${o.id})">📥 Архівувати</button>
+    </div>
+  `).join('');
+}
+
+function moveToArchive(id){
+  const idx = paidOrders.findIndex(o => o.id === id);
+  if(idx === -1) return;
+  const order = paidOrders[idx];
+  paidOrders.splice(idx,1);
+  archivedOrders.push(order);
+  renderPaidOrders();
+  renderArchive();
+  scheduleSync();
 }
 
 function addSource(){
@@ -2875,13 +2923,15 @@ function escalateOverdueUtilities(){
 
 let openSections = new Set(); // 'sources', 'debts', 'cat-<Category>'
 
-const SIMPLE_TOGGLE_SECTIONS = ['sources','debts','summary','purchaseTransfer','yearly'];
+const SIMPLE_TOGGLE_SECTIONS = ['sources','debts','summary','purchaseTransfer','yearly','clientDebts'];
 
 function toggleSection(key){
   if(openSections.has(key)) openSections.delete(key);
   else openSections.add(key);
   if(key === 'summaryExpense'){
     renderSummary();
+  } else if(key === 'paidOrders'){
+    renderPaidOrders();
   } else if(SIMPLE_TOGGLE_SECTIONS.includes(key)){
     applySectionState();
   } else {
@@ -2944,7 +2994,7 @@ function generateRecurringConstantInstances(){
   const month = today.getMonth();
   const daysInMonth = new Date(year, month+1, 0).getDate();
 
-  const allKnown = orders.concat(archivedOrders);
+  const allKnown = orders.concat(paidOrders, archivedOrders);
   const templateIds = new Set(
     allKnown.filter(o => o.recurring && o.templateId).map(o => o.templateId)
   );
@@ -3277,7 +3327,7 @@ function escapeHtml(s){
 
 function gatherState(){
   return {
-    orders, archivedOrders, idCounter,
+    orders, paidOrders, archivedOrders, idCounter,
     sources, sourceIdCounter,
     debts, debtIdCounter,
     clientDebts, clientDebtIdCounter,
@@ -3291,6 +3341,7 @@ function gatherState(){
 
 function applyState(data){
   orders = data.orders || [];
+  paidOrders = data.paidOrders || [];
   archivedOrders = data.archivedOrders || [];
   idCounter = data.idCounter || 1;
   sources = data.sources || sources;
@@ -3323,6 +3374,7 @@ function renderEverything(){
   renderClientDebts();
   renderDebts();
   renderOrders();
+  renderPaidOrders();
   renderArchive();
   renderBoard();
 }
@@ -3505,6 +3557,7 @@ renderClientFunds();
 renderClientDebts();
 renderDebts();
 renderOrders();
+renderPaidOrders();
 renderArchive();
 renderBoard();
 suppressSync = false;
