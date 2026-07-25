@@ -636,8 +636,12 @@
     margin-bottom:8px;
   }
   .cp-groups{margin-top:6px;}
-  .cp-client-group{margin-bottom:10px;}
+  .cp-client-group{margin-bottom:8px;}
   .cp-client-group:last-child{margin-bottom:0;}
+  .cp-client-group .orders-strip{gap:5px; padding:2px 2px 4px; margin-bottom:0;}
+  .cp-order-card{width:92px; padding:7px 7px 6px;}
+  .cp-order-card .name{font-size:11.5px;}
+  .cp-order-card .sum{font-size:11px;}
   .cp-client-name{
     font-size:11px;
     font-weight:800;
@@ -2624,19 +2628,20 @@ function renderClientPurchaseQueue(){
   const groupsHtml = Object.keys(byClient).map(clientName => `
     <div class="cp-client-group">
       <div class="cp-client-name">${escapeHtml(clientName)}</div>
-      ${byClient[clientName].map(p => `
-        <div class="order-card" style="--cat-color:#C9A030">
-          <div class="card-controls">
-            <button class="ctrl-btn" onclick="editClientPurchase(${p.id})" title="Змінити">✎</button>
-            <button class="ctrl-btn" onclick="deleteClientPurchase(${p.id})" title="Видалити">✕</button>
+      <div class="orders-strip">
+        ${byClient[clientName].map(p => `
+          <div class="order-card cp-order-card" style="--cat-color:#C9A030">
+            <div class="card-controls">
+              <button class="ctrl-btn" onclick="editClientPurchase(${p.id})" title="Змінити">✎</button>
+              <button class="ctrl-btn" onclick="deleteClientPurchase(${p.id})" title="Видалити">✕</button>
+            </div>
+            <div class="name">${escapeHtml(p.category)}</div>
+            <div class="sum">${p.sum.toLocaleString('uk-UA')} грн</div>
+            ${p.note ? `<div class="due-badge" style="background:#FFF3D6; color:#8a6a15;">${escapeHtml(p.note)}</div>` : ''}
+            <button class="pay-btn" style="background:#C9A030;" onclick="openExecutePurchaseModal(${p.id})">💎 Провести</button>
           </div>
-          <div class="name">${escapeHtml(p.category)}</div>
-          <div class="sum">${p.sum.toLocaleString('uk-UA')} грн</div>
-          <div class="cat">Ательє</div>
-          ${p.note ? `<div class="due-badge" style="background:#FFF3D6; color:#8a6a15;">${escapeHtml(p.note)}</div>` : ''}
-          <button class="pay-btn" style="background:#C9A030;" onclick="openExecutePurchaseModal(${p.id})">💎 Провести</button>
-        </div>
-      `).join('')}
+        `).join('')}
+      </div>
     </div>
   `).join('');
 
