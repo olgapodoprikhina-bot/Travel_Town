@@ -2382,15 +2382,12 @@ function renderSummary(){
       </div>
     `).join('');
 
-  const expenseOpen = openSections.has('summaryExpense');
   body.innerHTML = `
     <div class="summary-month">Місяць: поточний (${MONTH_NAMES[m]} ${y})</div>
     <div class="summary-row total-income"><span>Дохід</span><span class="amt">${totalIncome.toLocaleString('uk-UA')} грн</span></div>
-    <div class="summary-row total-expense summary-row-toggle" onclick="toggleSection('summaryExpense')">
-      <span>Витрата <span class="toggle-arrow" style="font-size:9px;">${expenseOpen?'▾':'▸'}</span></span>
-      <span class="amt">${totalExpense.toLocaleString('uk-UA')} грн</span>
-    </div>
-    ${expenseOpen ? `<div class="summary-divider"></div>${catRows || '<div class="summary-empty">Поки немає витрат за місяць.</div>'}` : ''}
+    <div class="summary-row total-expense"><span>Витрата</span><span class="amt">${totalExpense.toLocaleString('uk-UA')} грн</span></div>
+    <div class="summary-divider"></div>
+    ${catRows || '<div class="summary-empty">Поки немає витрат за місяць.</div>'}
   `;
   renderYearlyOverview();
 }
