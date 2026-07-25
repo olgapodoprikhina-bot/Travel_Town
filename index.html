@@ -1232,6 +1232,10 @@
 <div class="overlay" id="payOverlay">
   <div class="modal">
     <h2 id="payOrderName">Оплатити замовлення</h2>
+    <div class="field" id="payOverpayField" style="display:none;">
+      <label>Сума оплати (можна більше планової — надлишок піде на борг)</label>
+      <input id="fPayAmount" type="text" inputmode="decimal" oninput="refreshPayIconGrid()">
+    </div>
     <div style="font-size:12.5px; color:#7a7264; font-weight:700; margin-bottom:12px;">Обери, чим оплачуєш</div>
     <div id="payIconGrid" style="display:flex; gap:10px; justify-content:center; margin-bottom:6px;"></div>
     <div class="modal-actions">
@@ -1733,15 +1737,44 @@ function payOrder(id){
   if(!order) return;
   document.getElementById('payOrderName').textContent = 'Оплатити: ' + order.name;
 
+  const allowOverpay = order.category === 'Константа: Комуналка' && !!order.debtId;
+  const field = document.getElementById('payOverpayField');
+  const amountInput = document.getElementById('fPayAmount');
+  if(allowOverpay){
+    field.style.display = 'flex';
+    amountInput.value = order.sum;
+  } else {
+    field.style.display = 'none';
+    amountInput.value = order.sum;
+  }
+
+  refreshPayIconGrid();
+  document.getElementById('payOverlay').classList.add('show');
+}
+
+function currentPayAmount(){
+  const order = orders.find(o => o.id === payingOrderId);
+  if(!order) return 0;
+  const allowOverpay = order.category === 'Константа: Комуналка' && !!order.debtId;
+  if(!allowOverpay) return order.sum;
+  const entered = parseFloat(document.getElementById('fPayAmount').value.replace(',', '.'));
+  return (entered && entered >= order.sum) ? entered : order.sum;
+}
+
+function refreshPayIconGrid(){
+  const order = orders.find(o => o.id === payingOrderId);
+  if(!order) return;
+  const payAmount = currentPayAmount();
+
   const grid = document.getElementById('payIconGrid');
   const usableIndexes = boardCells
-    .map((c, i) => (c && c.category !== 'Клієнти' && c.value >= order.sum) ? i : null)
+    .map((c, i) => (c && c.category !== 'Клієнти' && c.value >= payAmount) ? i : null)
     .filter(i => i !== null);
 
   if(usableIndexes.length === 0){
     const hasAny = boardCells.some(c => c !== null && c.category !== 'Клієнти');
     grid.innerHTML = hasAny
-      ? `<div style="font-size:12.5px; color:#8a7264;">Жодній іконці не вистачає суми (потрібно ${order.sum.toLocaleString('uk-UA')} грн) — накопич ще або об'єднай іконки злиттям.</div>`
+      ? `<div style="font-size:12.5px; color:#8a7264;">Жодній іконці не вистачає суми (потрібно ${payAmount.toLocaleString('uk-UA')} грн) — накопич ще або об'єднай іконки злиттям.</div>`
       : '<div style="font-size:12.5px; color:#8a7264;">На дошці поки немає іконок для оплати (гроші клієнтів сюди не рахуються).</div>';
   } else {
     grid.innerHTML = usableIndexes.map(i => `
@@ -1751,8 +1784,6 @@ function payOrder(id){
       </div>
     `).join('');
   }
-
-  document.getElementById('payOverlay').classList.add('show');
 }
 
 function closePayModal(){
@@ -1767,15 +1798,18 @@ function confirmPay(cellIdx){
   const item = boardCells[cellIdx];
   if(!item) return;
 
+  const payAmount = currentPayAmount();
+  const overpay = payAmount - order.sum;
+
   orders.splice(idx,1);
   archivedOrders.push(order);
-  totalSum -= order.sum;
-  expenseLog.push({date: todayStr(), category: order.category, amount: order.sum});
+  totalSum -= payAmount;
+  expenseLog.push({date: todayStr(), category: order.category, amount: payAmount});
 
   if(order.debtId){
     const debt = debts.find(d => d.id === order.debtId);
     if(debt){
-      const principalPaid = order.debtPrincipal || order.sum;
+      const principalPaid = (order.debtPrincipal || order.sum) + overpay;
       debt.sum -= principalPaid;
       totalDebtPaid += principalPaid;
       if(debt.sum <= 0){
@@ -1784,7 +1818,7 @@ function confirmPay(cellIdx){
     }
   }
 
-  const remaining = item.value - order.sum;
+  const remaining = item.value - payAmount;
   if(remaining <= 0){
     boardCells[cellIdx] = null;
   } else {
