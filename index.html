@@ -1564,7 +1564,7 @@ const CAT_COLORS = {
 let editingOrderId = null;
 
 const EXPENSE_GROUPS = {
-  'Базові витрати': ['Побутові витрати','Транспорт','Телефон','Медицина','Допомога близьким','Фінансові послуги','Кредити','Комунальні','Продукти','Хотілки','Виробничі'],
+  'Базові витрати': ['Побутові витрати','Транспорт','Телефон','Підписки','Медицина','Допомога близьким','Фінансові послуги','Кредити','Комунальні','Продукти','Хотілки','Виробничі'],
   'Комфорт': ['Зовнішній вигляд','Програми','Канцтовари','Кафе','Розваги','Одяг і взуття'],
   'Річні': ['Меблі та дім','Подарунки','Гаджети','Побутова техніка'],
     'Саморозвиток': ['Книги та курси',"Здоров'я і фітнес"],
@@ -1691,6 +1691,7 @@ function saveOrder(){
   const expenseItem = expenseItemSel.value || null;
   const expenseGroup = expenseItem ? expenseItemSel.options[expenseItemSel.selectedIndex].getAttribute('data-group') : null;
   const name = purpose || expenseItem || 'Замовлення';
+  const recurring = document.getElementById('fRecurring').checked;
   const errEl = document.getElementById('formError');
 
   if(!sum || sum<=0){
@@ -1700,6 +1701,11 @@ function saveOrder(){
   }
   if((category === 'Константа: Кредит' || category === 'Константа: Комуналка') && !dueDate){
     errEl.textContent = 'Для константи потрібна дата платежу';
+    errEl.style.display = 'block';
+    return;
+  }
+  if(recurring && !dueDate){
+    errEl.textContent = 'Для повторюваного платежу потрібна дата (число місяця)';
     errEl.style.display = 'block';
     return;
   }
@@ -1714,7 +1720,6 @@ function saveOrder(){
     return;
   }
   errEl.style.display = 'none';
-  const recurring = document.getElementById('fRecurring').checked;
 
   if(editingOrderId){
     const o = orders.find(x => x.id === editingOrderId);
@@ -2664,6 +2669,8 @@ function renderOrderCard(o){
 // An unpaid instance from a previous month is NOT replaced or removed — it just keeps
 // counting overdue days (and, for utilities, still escalates into the debt at month-end
 // via escalateOverdueUtilities, unchanged). This only adds this month's copy if missing.
+// Works for ANY category (credit/utility, but also phone bills, subscriptions, etc.) —
+// only Кредит/Комуналка additionally get urgency-escalation and debt-linking behaviour.
 const RECURRING_CATEGORIES = ['Константа: Кредит', 'Константа: Комуналка'];
 
 function generateRecurringConstantInstances(){
@@ -2674,13 +2681,13 @@ function generateRecurringConstantInstances(){
 
   const allKnown = orders.concat(archivedOrders);
   const templateIds = new Set(
-    allKnown.filter(o => o.recurring && RECURRING_CATEGORIES.includes(o.category) && o.templateId).map(o => o.templateId)
+    allKnown.filter(o => o.recurring && o.templateId).map(o => o.templateId)
   );
 
   templateIds.forEach(tid => {
-    const instances = allKnown.filter(o => o.templateId === tid && o.recurring && RECURRING_CATEGORIES.includes(o.category));
+    const instances = allKnown.filter(o => o.templateId === tid && o.recurring);
     if(instances.length === 0) return;
-    // use the most recently created instance as the basis for name/sum/etc. — captures tariff changes
+    // use the most recently created instance as the basis for name/sum/etc. — captures price changes
     const basis = instances.reduce((a,b) => (b.id > a.id ? b : a));
     if(!basis.dueDate) return;
 
@@ -2701,7 +2708,9 @@ function generateRecurringConstantInstances(){
       debtId: basis.debtId,
       debtPrincipal: basis.debtPrincipal,
       recurring: true,
-      escalated: false
+      escalated: false,
+      expenseItem: basis.expenseItem,
+      expenseGroup: basis.expenseGroup
     });
   });
 }
