@@ -1173,7 +1173,14 @@
       <input id="fName" placeholder="Наприклад: сукня для Поліни">
     </div>
     <div class="field">
-      <label>Для чого</label>
+      <label>Стаття витрат</label>
+      <select id="fExpenseItem" onchange="updateExpenseGroup()">
+        <option value="">— не вибрано —</option>
+      </select>
+      <div id="fExpenseGroupBadge" style="display:none; margin-top:5px; font-size:11px; font-weight:800; color:#6a5cb0; background:#EFE6F7; padding:4px 9px; border-radius:20px; width:fit-content;"></div>
+    </div>
+    <div class="field">
+      <label>Що саме (за бажанням)</label>
       <input id="fPurpose" placeholder="Наприклад: змагання у вересні">
     </div>
     <div class="field">
@@ -1185,9 +1192,11 @@
       <select id="fCategory" onchange="toggleDebtSelect()">
         <option value="Константа: Кредит">Константа: Кредит</option>
         <option value="Константа: Комуналка">Константа: Комуналка</option>
-        <option value="Прожитковий мінімум">Прожитковий мінімум (їжа)</option>
-        <option value="Непередбачені витрати">Непередбачені витрати</option>
-        <option value="Дуже треба">Дуже треба</option>
+        <option value="Базові витрати">Базові витрати</option>
+        <option value="Комфорт">Комфорт</option>
+        <option value="Річні">Річні</option>
+        <option value="Саморозвиток">Саморозвиток</option>
+        <option value="Подорож">Подорож</option>
       </select>
     </div>
     <div class="field">
@@ -1278,9 +1287,11 @@
     <div class="field">
       <label>Категорія</label>
       <select id="fQuickCategory">
-        <option value="Непередбачені витрати" selected>Непередбачені витрати</option>
-        <option value="Дуже треба">Дуже треба</option>
-        <option value="Прожитковий мінімум">Прожитковий мінімум (їжа)</option>
+        <option value="Базові витрати" selected>Базові витрати</option>
+        <option value="Комфорт">Комфорт</option>
+        <option value="Річні">Річні</option>
+        <option value="Саморозвиток">Саморозвиток</option>
+        <option value="Подорож">Подорож</option>
         <option value="Константа: Кредит">Константа: Кредит</option>
         <option value="Константа: Комуналка">Константа: Комуналка</option>
       </select>
@@ -1541,12 +1552,58 @@ function tryMerge(a, b){
 const CAT_COLORS = {
   'Константа: Кредит':'#1E8FC4',
   'Константа: Комуналка':'#2E9E96',
+  // legacy categories — kept so existing orders still render/behave exactly as before
   'Прожитковий мінімум':'#5FCB7A',
   'Непередбачені витрати':'#FF6F61',
-  'Дуже треба':'#FFC93C'
+  'Дуже треба':'#FFC93C',
+  // new expense-group scheme
+  'Базові витрати':'#5FCB7A',
+  'Комфорт':'#FF6F61',
+  'Річні':'#FFC93C',
+  'Саморозвиток':'#8E6ADB',
+  'Подорож':'#3FB6E8'
 };
 
 let editingOrderId = null;
+
+const EXPENSE_GROUPS = {
+  'Базові витрати': ['Побутові витрати','Транспорт','Телефон','Медицина','Допомога близьким','Фінансові послуги','Кредити','Комунальні','Продукти','Хотілки'],
+  'Комфорт': ['Зовнішній вигляд','Програми','Канцтовари','Кафе','Розваги','Одяг і взуття'],
+  'Річні': ['Меблі та дім','Подарунки','Гаджети','Побутова техніка'],
+    'Саморозвиток': ['Книги та курси',"Здоров'я і фітнес"],
+  'Подорож': ['Транспорт (подорож)','Проживання','Добові']
+};
+
+function populateExpenseItemSelect(){
+  const sel = document.getElementById('fExpenseItem');
+  let html = '<option value="">— не вибрано —</option>';
+  Object.keys(EXPENSE_GROUPS).forEach(group => {
+    html += `<optgroup label="${group}">`;
+    EXPENSE_GROUPS[group].forEach(item => {
+      html += `<option value="${item}" data-group="${group}">${item}</option>`;
+    });
+    html += `</optgroup>`;
+  });
+  sel.innerHTML = html;
+}
+
+function updateExpenseGroup(){
+  const sel = document.getElementById('fExpenseItem');
+  const badge = document.getElementById('fExpenseGroupBadge');
+  const opt = sel.options[sel.selectedIndex];
+  const group = opt ? opt.getAttribute('data-group') : null;
+  if(group){
+    badge.textContent = 'Група: ' + group;
+    badge.style.display = 'block';
+    const catSel = document.getElementById('fCategory');
+    if([...catSel.options].some(o => o.value === group)){
+      catSel.value = group;
+      toggleDebtSelect();
+    }
+  } else {
+    badge.style.display = 'none';
+  }
+}
 
 function openModal(){
   const sel = document.getElementById('fDebtLink');
@@ -1555,6 +1612,9 @@ function openModal(){
   } else {
     sel.innerHTML = debts.map(d => `<option value="${d.id}">${escapeHtml(d.name)} (${d.sum.toLocaleString('uk-UA')} грн)</option>`).join('');
   }
+  populateExpenseItemSelect();
+  document.getElementById('fExpenseItem').value = '';
+  updateExpenseGroup();
   document.getElementById('modalTitle').textContent = 'Нове замовлення';
   document.getElementById('overlay').classList.add('show');
 }
@@ -1581,6 +1641,9 @@ function editOrder(id){
   toggleDebtSelect();
   if(o.debtId) sel.value = o.debtId;
   document.getElementById('fDebtPrincipal').value = o.debtPrincipal || '';
+  populateExpenseItemSelect();
+  document.getElementById('fExpenseItem').value = o.expenseItem || '';
+  updateExpenseGroup();
 
   document.getElementById('modalTitle').textContent = 'Змінити замовлення';
   document.getElementById('overlay').classList.add('show');
@@ -1606,6 +1669,8 @@ function closeModal(){
   document.getElementById('debtSelectField').style.display = 'none';
   document.getElementById('debtPrincipalField').style.display = 'none';
   document.getElementById('formError').style.display = 'none';
+  document.getElementById('fExpenseItem').value = '';
+  document.getElementById('fExpenseGroupBadge').style.display = 'none';
   editingOrderId = null;
 }
 
@@ -1619,6 +1684,9 @@ function saveOrder(){
   const isCredit = category === 'Константа: Кредит';
   const debtId = isDebt ? parseInt(document.getElementById('fDebtLink').value) : null;
   const debtPrincipal = (isDebt && isCredit) ? parseFloat(document.getElementById('fDebtPrincipal').value.replace(',', '.')) : null;
+  const expenseItemSel = document.getElementById('fExpenseItem');
+  const expenseItem = expenseItemSel.value || null;
+  const expenseGroup = expenseItem ? expenseItemSel.options[expenseItemSel.selectedIndex].getAttribute('data-group') : null;
   const errEl = document.getElementById('formError');
 
   if(!name || !sum || sum<=0){
@@ -1647,11 +1715,11 @@ function saveOrder(){
   if(editingOrderId){
     const o = orders.find(x => x.id === editingOrderId);
     if(o){
-      Object.assign(o, {name, purpose, sum, category, dueDate: dueDate || null, debtId: debtId || null, debtPrincipal: debtPrincipal || null, recurring, escalated:false});
+      Object.assign(o, {name, purpose, sum, category, dueDate: dueDate || null, debtId: debtId || null, debtPrincipal: debtPrincipal || null, recurring, escalated:false, expenseItem, expenseGroup});
     }
   } else {
     const newId = idCounter++;
-    orders.push({id:newId, templateId:newId, name, purpose, sum, category, dueDate: dueDate || null, debtId: debtId || null, debtPrincipal: debtPrincipal || null, recurring, escalated:false});
+    orders.push({id:newId, templateId:newId, name, purpose, sum, category, dueDate: dueDate || null, debtId: debtId || null, debtPrincipal: debtPrincipal || null, recurring, escalated:false, expenseItem, expenseGroup});
   }
   closeModal();
   renderOrders();
@@ -2538,6 +2606,9 @@ function renderOrderCard(o){
   const debtBadge = debt
     ? `<div class="due-badge" style="background:#EFE6F7; color:#6a4b9c;">📋 ${escapeHtml(debt.name)}</div>`
     : '';
+  const expenseBadge = o.expenseItem
+    ? `<div class="due-badge" style="background:#EFE6F7; color:#6a5cb0;">${escapeHtml(o.expenseItem)}${o.expenseGroup ? ' · '+escapeHtml(o.expenseGroup) : ''}</div>`
+    : '';
   return `
     <div class="order-card" style="--cat-color:${CAT_COLORS[o.category]||'#1E8FC4'}">
       <div class="card-controls">
@@ -2549,6 +2620,7 @@ function renderOrderCard(o){
       <div class="sum">${o.sum.toLocaleString('uk-UA')} грн</div>
       <div class="cat">${escapeHtml(o.category)}</div>
       ${daysLeftLabel(o.dueDate, o.category)}
+      ${expenseBadge}
       ${debtBadge}
       <button class="pay-btn" onclick="payOrder(${o.id})">✓ Оплатити</button>
     </div>
