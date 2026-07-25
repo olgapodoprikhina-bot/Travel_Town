@@ -1400,12 +1400,21 @@
     <h2>🫙 Банка 10%</h2>
     <div style="font-size:12px; font-weight:800; color:#2E6B3A; background:#E4F5E0; padding:7px 10px; border-radius:10px; margin-bottom:12px;">У банці зараз: <span id="jar10CurrentBalance">0</span> грн · вивести звідси не можна</div>
     <div id="jar10FormStep">
-      <div style="font-size:12.5px; color:#7a7264; font-weight:700; margin-bottom:10px;">З якої суми відрахувати 10%</div>
+      <div style="font-size:12.5px; color:#7a7264; font-weight:700; margin-bottom:10px;">З якого джерела поповнюєш</div>
       <div id="jar10SourceGrid" style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:12px;"></div>
       <div id="jar10Preview" style="display:none; font-size:13px; font-weight:800; color:#2E6B3A; text-align:center; margin-bottom:10px;"></div>
+
+      <div class="field" id="jar10ManualField" style="display:none;">
+        <label>Або впиши свою суму</label>
+        <input id="fJar10ManualAmount" type="text" inputmode="decimal" placeholder="Сума, грн">
+      </div>
+
       <div class="modal-actions">
         <button class="btn-cancel" onclick="closeJar10Modal()">Скасувати</button>
         <button class="btn-save" id="jar10ConfirmBtn" style="display:none;" onclick="confirmJar10Transfer()">Поповнити на 10%</button>
+      </div>
+      <div class="modal-actions" id="jar10ManualActions" style="display:none;">
+        <button class="btn-save" style="width:100%; background:#2E9E96;" onclick="confirmJar10ManualTransfer()">Поповнити на свою суму</button>
       </div>
       <div id="jar10Error" style="color:#B5483D; font-size:12px; font-weight:700; margin-top:8px; display:none;"></div>
     </div>
@@ -2155,6 +2164,9 @@ function openJar10Modal(){
   document.getElementById('jar10Error').style.display = 'none';
   document.getElementById('jar10Preview').style.display = 'none';
   document.getElementById('jar10ConfirmBtn').style.display = 'none';
+  document.getElementById('jar10ManualField').style.display = 'none';
+  document.getElementById('jar10ManualActions').style.display = 'none';
+  document.getElementById('fJar10ManualAmount').value = '';
   jar10SourceCellIdx = null;
 
   const sourceIndexes = boardCells
@@ -2185,9 +2197,11 @@ function selectJar10Source(cellIdx){
   const item = boardCells[cellIdx];
   const tenPercent = Math.round(item.value * 0.1 * 100) / 100;
   const previewEl = document.getElementById('jar10Preview');
-  previewEl.textContent = `10% от ${item.value.toLocaleString('uk-UA')} грн = ${tenPercent.toLocaleString('uk-UA')} грн`;
+  previewEl.textContent = `10% від ${item.value.toLocaleString('uk-UA')} грн = ${tenPercent.toLocaleString('uk-UA')} грн`;
   previewEl.style.display = 'block';
   document.getElementById('jar10ConfirmBtn').style.display = 'block';
+  document.getElementById('jar10ManualField').style.display = 'flex';
+  document.getElementById('jar10ManualActions').style.display = 'flex';
 }
 
 function closeJar10Modal(){
@@ -2200,7 +2214,7 @@ function confirmJar10Transfer(){
   const item = jar10SourceCellIdx !== null ? boardCells[jar10SourceCellIdx] : null;
 
   if(!item){
-    errEl.textContent = 'Обери, з якої суми відраховувати';
+    errEl.textContent = 'Обери, з якого джерела поповнюєш';
     errEl.style.display = 'block';
     return;
   }
@@ -2212,6 +2226,33 @@ function confirmJar10Transfer(){
     : {icon: tierIcon(item.category, remaining), category: item.category, value: remaining, pieces:1};
 
   jar10Balance += tenPercent;
+
+  closeJar10Modal();
+  renderBoard();
+}
+
+function confirmJar10ManualTransfer(){
+  const errEl = document.getElementById('jar10Error');
+  const item = jar10SourceCellIdx !== null ? boardCells[jar10SourceCellIdx] : null;
+  const amount = parseFloat(document.getElementById('fJar10ManualAmount').value.replace(',', '.'));
+
+  if(!item){
+    errEl.textContent = 'Обери, з якого джерела поповнюєш';
+    errEl.style.display = 'block';
+    return;
+  }
+  if(!amount || amount <= 0 || amount > item.value){
+    errEl.textContent = 'Впиши суму не більше, ніж є у вибраній іконці';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const remaining = item.value - amount;
+  boardCells[jar10SourceCellIdx] = remaining <= 0
+    ? null
+    : {icon: tierIcon(item.category, remaining), category: item.category, value: remaining, pieces:1};
+
+  jar10Balance += amount;
 
   closeJar10Modal();
   renderBoard();
