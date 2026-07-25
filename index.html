@@ -1169,10 +1169,6 @@
   <div class="modal">
     <h2 id="modalTitle">Нове замовлення</h2>
     <div class="field">
-      <label>Назва замовлення</label>
-      <input id="fName" placeholder="Наприклад: сукня для Поліни">
-    </div>
-    <div class="field">
       <label>Стаття витрат</label>
       <select id="fExpenseItem" onchange="updateExpenseGroup()">
         <option value="">— не вибрано —</option>
@@ -1187,18 +1183,15 @@
       <label>Сума, грн</label>
       <input id="fSum" type="text" inputmode="decimal" placeholder="3500">
     </div>
-    <div class="field">
-      <label>Категорія</label>
-      <select id="fCategory" onchange="toggleDebtSelect()">
-        <option value="Константа: Кредит">Константа: Кредит</option>
-        <option value="Константа: Комуналка">Константа: Комуналка</option>
-        <option value="Базові витрати">Базові витрати</option>
-        <option value="Комфорт">Комфорт</option>
-        <option value="Річні">Річні</option>
-        <option value="Саморозвиток">Саморозвиток</option>
-        <option value="Подорож">Подорож</option>
-      </select>
-    </div>
+    <select id="fCategory" onchange="toggleDebtSelect()" style="display:none;">
+      <option value="Константа: Кредит">Константа: Кредит</option>
+      <option value="Константа: Комуналка">Константа: Комуналка</option>
+      <option value="Базові витрати">Базові витрати</option>
+      <option value="Комфорт">Комфорт</option>
+      <option value="Річні">Річні</option>
+      <option value="Саморозвиток">Саморозвиток</option>
+      <option value="Подорож">Подорож</option>
+    </select>
     <div class="field">
       <label>Дата платежу (для фіксованих — обов'язково)</label>
       <input id="fDate" type="date">
@@ -1587,17 +1580,24 @@ function populateExpenseItemSelect(){
   sel.innerHTML = html;
 }
 
+const EXPENSE_ITEM_CATEGORY_OVERRIDE = {
+  'Кредити': 'Константа: Кредит',
+  'Комунальні': 'Константа: Комуналка'
+};
+
 function updateExpenseGroup(){
   const sel = document.getElementById('fExpenseItem');
   const badge = document.getElementById('fExpenseGroupBadge');
   const opt = sel.options[sel.selectedIndex];
   const group = opt ? opt.getAttribute('data-group') : null;
+  const itemValue = sel.value;
   if(group){
     badge.textContent = 'Група: ' + group;
     badge.style.display = 'block';
     const catSel = document.getElementById('fCategory');
-    if([...catSel.options].some(o => o.value === group)){
-      catSel.value = group;
+    const targetCategory = EXPENSE_ITEM_CATEGORY_OVERRIDE[itemValue] || group;
+    if([...catSel.options].some(o => o.value === targetCategory)){
+      catSel.value = targetCategory;
       toggleDebtSelect();
     }
   } else {
@@ -1614,6 +1614,7 @@ function openModal(){
   }
   populateExpenseItemSelect();
   document.getElementById('fExpenseItem').value = '';
+  document.getElementById('fCategory').value = 'Базові витрати';
   updateExpenseGroup();
   document.getElementById('modalTitle').textContent = 'Нове замовлення';
   document.getElementById('overlay').classList.add('show');
@@ -1631,7 +1632,6 @@ function editOrder(id){
     sel.innerHTML = debts.map(d => `<option value="${d.id}">${escapeHtml(d.name)} (${d.sum.toLocaleString('uk-UA')} грн)</option>`).join('');
   }
 
-  document.getElementById('fName').value = o.name;
   document.getElementById('fPurpose').value = o.purpose;
   document.getElementById('fSum').value = o.sum;
   document.getElementById('fCategory').value = o.category;
@@ -1663,7 +1663,7 @@ function toggleDebtSelect(){
 }
 function closeModal(){
   document.getElementById('overlay').classList.remove('show');
-  ['fName','fPurpose','fSum','fDate','fDebtPrincipal'].forEach(id => document.getElementById(id).value = '');
+  ['fPurpose','fSum','fDate','fDebtPrincipal'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('fIsDebt').checked = false;
   document.getElementById('fRecurring').checked = false;
   document.getElementById('debtSelectField').style.display = 'none';
@@ -1675,7 +1675,6 @@ function closeModal(){
 }
 
 function saveOrder(){
-  const name = document.getElementById('fName').value.trim();
   const purpose = document.getElementById('fPurpose').value.trim();
   const sum = parseFloat(document.getElementById('fSum').value.replace(',', '.'));
   const category = document.getElementById('fCategory').value;
@@ -1687,10 +1686,11 @@ function saveOrder(){
   const expenseItemSel = document.getElementById('fExpenseItem');
   const expenseItem = expenseItemSel.value || null;
   const expenseGroup = expenseItem ? expenseItemSel.options[expenseItemSel.selectedIndex].getAttribute('data-group') : null;
+  const name = purpose || expenseItem || 'Замовлення';
   const errEl = document.getElementById('formError');
 
-  if(!name || !sum || sum<=0){
-    errEl.textContent = !name ? 'Впиши назву замовлення' : 'Впиши правильну суму';
+  if(!sum || sum<=0){
+    errEl.textContent = 'Впиши правильну суму';
     errEl.style.display = 'block';
     return;
   }
@@ -2691,9 +2691,16 @@ const LEGACY_CATEGORY_MAP = {
 function migrateLegacyCategories(){
   orders.forEach(o => {
     if(LEGACY_CATEGORY_MAP[o.category]) o.category = LEGACY_CATEGORY_MAP[o.category];
+    // fix orders saved with the wrong life-area group before the Кредити/Комунальні override existed
+    if(o.expenseItem && EXPENSE_ITEM_CATEGORY_OVERRIDE[o.expenseItem] && o.category !== EXPENSE_ITEM_CATEGORY_OVERRIDE[o.expenseItem]){
+      o.category = EXPENSE_ITEM_CATEGORY_OVERRIDE[o.expenseItem];
+    }
   });
   archivedOrders.forEach(o => {
     if(LEGACY_CATEGORY_MAP[o.category]) o.category = LEGACY_CATEGORY_MAP[o.category];
+    if(o.expenseItem && EXPENSE_ITEM_CATEGORY_OVERRIDE[o.expenseItem] && o.category !== EXPENSE_ITEM_CATEGORY_OVERRIDE[o.expenseItem]){
+      o.category = EXPENSE_ITEM_CATEGORY_OVERRIDE[o.expenseItem];
+    }
   });
   sources.forEach(s => {
     if(LEGACY_CATEGORY_MAP[s.category]) s.category = LEGACY_CATEGORY_MAP[s.category];
