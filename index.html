@@ -186,6 +186,17 @@
   }
   .summary-cat-row .dot{width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:5px;}
   .summary-empty{font-size:11px; color:#a89a83;}
+  .cashflow-row{
+    display:flex;
+    gap:10px;
+    margin-top:5px;
+    font-size:10.5px;
+    font-weight:800;
+  }
+  .cashflow-row .cf-item{display:flex; align-items:center; gap:3px;}
+  .cashflow-row .cf-label{color:#a89a83; font-weight:700;}
+  .cashflow-row .cf-val.positive{color:#3A8A4E;}
+  .cashflow-row .cf-val.negative{color:var(--coral);}
 
   /* --- Yearly overview table --- */
   .yearly-group-title{
@@ -1112,6 +1123,7 @@
           <span>🔁 Трансфер замовлень</span>
           <span class="toggle-arrow" id="arrow-summary">▸</span>
         </div>
+        <div id="summaryCashflow" class="cashflow-row"></div>
         <div id="summaryContent" class="section-content collapsed">
           <div id="summaryBody"></div>
         </div>
@@ -2420,6 +2432,20 @@ function renderSummary(){
 
   const totalIncome = monthIncome.reduce((s,e) => s + e.amount, 0);
   const totalExpense = monthExpense.reduce((s,e) => s + e.amount, 0);
+  const monthCashflow = totalIncome - totalExpense;
+
+  const inThisYear = e => new Date(e.date + 'T00:00:00').getFullYear() === y;
+  const yearIncome = incomeLog.filter(inThisYear).reduce((s,e) => s + e.amount, 0);
+  const yearExpense = expenseLog.filter(inThisYear).reduce((s,e) => s + e.amount, 0);
+  const yearCashflow = yearIncome - yearExpense;
+
+  const cfEl = document.getElementById('summaryCashflow');
+  if(cfEl){
+    cfEl.innerHTML = `
+      <span class="cf-item"><span class="cf-label">Місяць:</span> <span class="cf-val ${monthCashflow>=0?'positive':'negative'}">${monthCashflow>=0?'+':''}${monthCashflow.toLocaleString('uk-UA')} грн</span></span>
+      <span class="cf-item"><span class="cf-label">Рік:</span> <span class="cf-val ${yearCashflow>=0?'positive':'negative'}">${yearCashflow>=0?'+':''}${yearCashflow.toLocaleString('uk-UA')} грн</span></span>
+    `;
+  }
 
   const byCategory = {};
   monthExpense.forEach(e => {
