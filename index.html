@@ -238,6 +238,26 @@
     padding:10px 12px;
     border:1px dashed rgba(46,158,150,0.35);
   }
+  .client-debt-card{
+    margin-top:8px;
+    background:#FFF1EE;
+    border-radius:16px;
+    padding:10px 12px;
+    border:1px dashed rgba(181,72,61,0.35);
+  }
+  .client-debt-card .debt-row{border-bottom-color:rgba(181,72,61,0.15);}
+  .client-debt-card .debts-add-row button{background:var(--coral);}
+  .cd-repay-btn{
+    border:none;
+    background:var(--coral);
+    color:#fff;
+    border-radius:8px;
+    padding:3px 8px;
+    font-weight:800;
+    font-size:9.5px;
+    cursor:pointer;
+    margin-left:4px;
+  }
   .client-balance{
     font-size:11px;
     font-weight:800;
@@ -1139,6 +1159,23 @@
         </div>
       </div>
 
+      <div class="client-debt-card">
+        <div class="section-toggle" onclick="toggleSection('clientDebts')">
+          <span>⚠️ Винна клієнтам</span>
+          <span class="debts-total" id="clientDebtsTotal" style="color:var(--coral);">0 грн</span>
+          <span class="toggle-arrow" id="arrow-clientDebts">▸</span>
+        </div>
+        <div id="clientDebtsContent" class="section-content collapsed">
+          <div class="client-note">Гроші клієнта витрачені не на матеріали — треба повернути з власних.</div>
+          <div id="clientDebtsList"></div>
+          <div class="debts-add-row">
+            <input id="fClientDebtName" type="text" placeholder="Клієнт">
+            <input id="fClientDebtSum" type="text" inputmode="decimal" placeholder="Сума">
+            <button onclick="addClientDebt()">+</button>
+          </div>
+        </div>
+      </div>
+
       <div class="debts-card">
         <div class="section-toggle" onclick="toggleSection('debts')">
           <span>📋 Мої борги</span>
@@ -1449,6 +1486,24 @@
   </div>
 </div>
 
+<div class="overlay" id="repayClientDebtOverlay">
+  <div class="modal">
+    <h2>Повернути клієнту</h2>
+    <div id="repayClientDebtInfo" style="font-size:12px; font-weight:800; color:#B5483D; background:#FFE0DC; padding:7px 10px; border-radius:10px; margin-bottom:12px;"></div>
+    <div style="font-size:12.5px; color:#7a7264; font-weight:700; margin-bottom:10px;">З якої особистої іконки повертаєш</div>
+    <div id="repaySourceGrid" style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:12px;"></div>
+    <div class="field" id="repayAmountField" style="display:none;">
+      <label>Сума повернення</label>
+      <input id="fRepayAmount" type="text" inputmode="decimal">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeRepayClientDebtModal()">Скасувати</button>
+      <button class="btn-save" id="repayConfirmBtn" style="display:none;" onclick="confirmRepayClientDebt()">Повернути</button>
+    </div>
+    <div id="repayClientDebtError" style="color:#B5483D; font-size:12px; font-weight:700; margin-top:8px; display:none;"></div>
+  </div>
+</div>
+
 <script>
 let suppressSync = false; // true while applying incoming remote data, to avoid sync loops
 let syncTimer = null;
@@ -1473,6 +1528,11 @@ let sourceIdCounter = 3;
 
 let debts = [];
 let debtIdCounter = 1;
+
+// "Винна клієнтам" — money spent from a client's fund that wasn't used for their order yet;
+// tracked separately from personal debts, repaid from her own money back into the client pool.
+let clientDebts = [];
+let clientDebtIdCounter = 1;
 
 const SOURCE_ICONS = {
   'Пошиття костюмів': ['🪡','🧵','✂️'],
@@ -2016,6 +2076,138 @@ function renderDebts(){
     </div>
   `).join('');
   scheduleSync();
+}
+
+function addClientDebt(){
+  const nameInput = document.getElementById('fClientDebtName');
+  const sumInput = document.getElementById('fClientDebtSum');
+  const name = nameInput.value.trim();
+  const sum = parseFloat(sumInput.value.replace(',', '.'));
+  if(!name || !sum || sum <= 0) return;
+  clientDebts.push({id: clientDebtIdCounter++, name, sum});
+  nameInput.value = '';
+  sumInput.value = '';
+  renderClientDebts();
+}
+
+function deleteClientDebt(id){
+  clientDebts = clientDebts.filter(d => d.id !== id);
+  renderClientDebts();
+}
+
+function renderClientDebts(){
+  const list = document.getElementById('clientDebtsList');
+  const totalEl = document.getElementById('clientDebtsTotal');
+  if(!list || !totalEl) return;
+  const total = clientDebts.reduce((s,d) => s + d.sum, 0);
+  totalEl.textContent = total.toLocaleString('uk-UA') + ' грн';
+
+  if(clientDebts.length === 0){
+    list.innerHTML = '<div class="debts-empty">Поки порожньо.</div>';
+    scheduleSync();
+    return;
+  }
+  list.innerHTML = clientDebts.map(d => `
+    <div class="debt-row">
+      <span class="d-name">${escapeHtml(d.name)}</span>
+      <span class="d-sum">${d.sum.toLocaleString('uk-UA')}</span>
+      <button class="cd-repay-btn" onclick="openRepayClientDebtModal(${d.id})">Повернути</button>
+      <button class="d-del" onclick="deleteClientDebt(${d.id})">✕</button>
+    </div>
+  `).join('');
+  scheduleSync();
+}
+
+let repayingDebtId = null;
+let repaySourceCellIdx = null;
+
+function openRepayClientDebtModal(id){
+  const debt = clientDebts.find(d => d.id === id);
+  if(!debt) return;
+  repayingDebtId = id;
+  repaySourceCellIdx = null;
+
+  document.getElementById('repayClientDebtInfo').textContent = `Винна: ${escapeHtml(debt.name)} — ${debt.sum.toLocaleString('uk-UA')} грн`;
+  document.getElementById('repayClientDebtError').style.display = 'none';
+  document.getElementById('repayAmountField').style.display = 'none';
+  document.getElementById('repayConfirmBtn').style.display = 'none';
+  document.getElementById('fRepayAmount').value = '';
+
+  const sourceIndexes = boardCells
+    .map((c, i) => (i !== JAR_INDEX && i !== JAR10_INDEX && c && c.category !== 'Клієнти') ? i : null)
+    .filter(i => i !== null);
+
+  const grid = document.getElementById('repaySourceGrid');
+  if(sourceIndexes.length === 0){
+    grid.innerHTML = '<div style="font-size:12.5px; color:#8a7264;">На дошці немає особистих іконок, звідки повернути.</div>';
+  } else {
+    grid.innerHTML = sourceIndexes.map(i => `
+      <div class="icon-choice" onclick="selectRepaySource(${i})" id="repay-src-${i}" style="flex-direction:column; gap:2px;">
+        <div>${boardCells[i].icon}</div>
+        <div style="font-size:9px; font-weight:800; color:#8a7264;">${boardCells[i].value.toLocaleString('uk-UA')}</div>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('repayClientDebtOverlay').classList.add('show');
+}
+
+function selectRepaySource(cellIdx){
+  repaySourceCellIdx = cellIdx;
+  document.querySelectorAll('#repaySourceGrid .icon-choice').forEach(el => el.style.borderColor = '#E9DCC0');
+  const chosen = document.getElementById('repay-src-'+cellIdx);
+  if(chosen) chosen.style.borderColor = 'var(--leaf)';
+
+  const debt = clientDebts.find(d => d.id === repayingDebtId);
+  const item = boardCells[cellIdx];
+  document.getElementById('fRepayAmount').value = Math.min(debt.sum, item.value);
+  document.getElementById('repayAmountField').style.display = 'flex';
+  document.getElementById('repayConfirmBtn').style.display = 'block';
+}
+
+function closeRepayClientDebtModal(){
+  document.getElementById('repayClientDebtOverlay').classList.remove('show');
+  repayingDebtId = null;
+  repaySourceCellIdx = null;
+}
+
+function confirmRepayClientDebt(){
+  const errEl = document.getElementById('repayClientDebtError');
+  const debt = clientDebts.find(d => d.id === repayingDebtId);
+  const item = repaySourceCellIdx !== null ? boardCells[repaySourceCellIdx] : null;
+  const amount = parseFloat(document.getElementById('fRepayAmount').value.replace(',', '.'));
+
+  if(!debt || !item){
+    errEl.textContent = 'Обери, звідки повертаєш';
+    errEl.style.display = 'block';
+    return;
+  }
+  if(!amount || amount <= 0 || amount > item.value || amount > debt.sum){
+    errEl.textContent = 'Сума має бути більше нуля і не більше залишку боргу чи іконки';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const remaining = item.value - amount;
+  boardCells[repaySourceCellIdx] = remaining <= 0
+    ? null
+    : {icon: tierIcon(item.category, remaining), category: item.category, value: remaining, pieces:1};
+
+  const emptyIdx = findEmptyBoardIndex();
+  if(emptyIdx !== -1){
+    boardCells[emptyIdx] = {icon: tierIcon('Клієнти', amount), category:'Клієнти', value: amount, pieces:1};
+  }
+  clientTx.push({id: clientTxIdCounter++, type:'income', label: 'Повернення боргу: ' + debt.name, amount, date: todayStr()});
+
+  debt.sum -= amount;
+  if(debt.sum <= 0){
+    clientDebts = clientDebts.filter(d => d.id !== debt.id);
+  }
+
+  closeRepayClientDebtModal();
+  renderClientDebts();
+  renderClientFunds();
+  renderBoard();
 }
 
 function daysLeftLabel(dueDate, category){
@@ -3081,6 +3273,7 @@ function gatherState(){
     orders, archivedOrders, idCounter,
     sources, sourceIdCounter,
     debts, debtIdCounter,
+    clientDebts, clientDebtIdCounter,
     boardCells, totalSum, jarBalance, jar10Balance,
     incomeLog, expenseLog,
     clientTx, clientTxIdCounter,
@@ -3097,6 +3290,8 @@ function applyState(data){
   sourceIdCounter = data.sourceIdCounter || sourceIdCounter;
   debts = data.debts || [];
   debtIdCounter = data.debtIdCounter || 1;
+  clientDebts = data.clientDebts || [];
+  clientDebtIdCounter = data.clientDebtIdCounter || 1;
   boardCells = data.boardCells || new Array(BOARD_COLS*BOARD_ROWS).fill(null);
   totalSum = data.totalSum || 0;
   jarBalance = data.jarBalance || 0;
@@ -3118,6 +3313,7 @@ function renderEverything(){
   renderSources();
   renderSummary();
   renderClientFunds();
+  renderClientDebts();
   renderDebts();
   renderOrders();
   renderArchive();
@@ -3299,6 +3495,7 @@ suppressSync = true;
 renderSources();
 renderSummary();
 renderClientFunds();
+renderClientDebts();
 renderDebts();
 renderOrders();
 renderArchive();
