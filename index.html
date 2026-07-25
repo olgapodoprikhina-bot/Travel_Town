@@ -1205,6 +1205,7 @@
       <option value="Річні">Річні</option>
       <option value="Саморозвиток">Саморозвиток</option>
       <option value="Подорож">Подорож</option>
+      <option value="Ательє">Ательє</option>
     </select>
     <div class="field">
       <label>Дата платежу (для фіксованих — обов'язково)</label>
@@ -1264,6 +1265,10 @@
     <div id="purchaseFormStep">
       <div id="purchaseAvailable" style="font-size:12px; font-weight:800; color:#1E6E67; background:#EAF1F0; padding:7px 10px; border-radius:10px; margin-bottom:12px;"></div>
       <div class="field">
+        <label>Для якого клієнта (за бажанням)</label>
+        <input id="fPurchaseClient" type="text" placeholder="Наприклад: Ольга">
+      </div>
+      <div class="field">
         <label>Категорія</label>
         <select id="fPurchaseCategory">
           <option value="Тканина">Тканина</option>
@@ -1303,6 +1308,7 @@
         <option value="Річні">Річні</option>
         <option value="Саморозвиток">Саморозвиток</option>
         <option value="Подорож">Подорож</option>
+        <option value="Ательє">Ательє</option>
         <option value="Константа: Кредит">Константа: Кредит</option>
         <option value="Константа: Комуналка">Константа: Комуналка</option>
       </select>
@@ -1577,7 +1583,8 @@ const CAT_COLORS = {
   'Комфорт':'#FF6F61',
   'Річні':'#FFC93C',
   'Саморозвиток':'#8E6ADB',
-  'Подорож':'#3FB6E8'
+  'Подорож':'#3FB6E8',
+  'Ательє':'#C9A030'
 };
 
 let editingOrderId = null;
@@ -1587,7 +1594,8 @@ const EXPENSE_GROUPS = {
   'Комфорт': ['Зовнішній вигляд','Програми','Канцтовари','Кафе','Розваги','Одяг і взуття'],
   'Річні': ['Меблі та дім','Подарунки','Гаджети','Побутова техніка'],
     'Саморозвиток': ['Книги та курси',"Здоров'я і фітнес"],
-  'Подорож': ['Транспорт (подорож)','Проживання','Добові']
+  'Подорож': ['Транспорт (подорож)','Проживання','Добові'],
+  'Ательє': ['Тканина','Стрази','Витратні матеріали','Фарба']
 };
 
 function populateExpenseItemSelect(){
@@ -2114,10 +2122,12 @@ function addClientIncome(){
 
 let purchasingCategory = null;
 let purchasingAmount = null;
+let purchasingClient = null;
 
 function openPurchaseModal(){
   document.getElementById('purchaseError').style.display = 'none';
   document.getElementById('fPurchaseAmount').value = '';
+  document.getElementById('fPurchaseClient').value = '';
   document.getElementById('purchaseFormStep').style.display = 'block';
   document.getElementById('purchasePickerStep').style.display = 'none';
 
@@ -2137,10 +2147,12 @@ function closePurchaseModal(){
   document.getElementById('purchaseOverlay').classList.remove('show');
   purchasingCategory = null;
   purchasingAmount = null;
+  purchasingClient = null;
 }
 
 function proceedToPurchasePicker(){
   const category = document.getElementById('fPurchaseCategory').value;
+  const client = document.getElementById('fPurchaseClient').value.trim();
   const amount = parseFloat(document.getElementById('fPurchaseAmount').value.replace(',', '.'));
   const errEl = document.getElementById('purchaseError');
   if(!amount || amount <= 0){
@@ -2170,6 +2182,7 @@ function proceedToPurchasePicker(){
 
   purchasingCategory = category;
   purchasingAmount = amount;
+  purchasingClient = client || null;
   document.getElementById('purchaseFormStep').style.display = 'none';
   document.getElementById('purchasePickerStep').style.display = 'block';
 }
@@ -2399,7 +2412,7 @@ function finalizePurchase(cellIdx){
     ? null
     : {icon: item.icon, category: item.category, value: remaining, pieces:1};
 
-  clientTx.push({id: clientTxIdCounter++, type:'expense', label: purchasingCategory, amount: purchasingAmount, date: todayStr()});
+  clientTx.push({id: clientTxIdCounter++, type:'expense', label: purchasingCategory, client: purchasingClient, amount: purchasingAmount, date: todayStr()});
 
   closePurchaseModal();
   renderClientFunds();
@@ -2516,6 +2529,19 @@ function renderPurchaseTransfer(){
       </div>
     `).join('');
 
+  const byClientExpense = {};
+  monthTx.filter(t => t.type === 'expense' && t.client).forEach(t => {
+    byClientExpense[t.client] = (byClientExpense[t.client] || 0) + t.amount;
+  });
+  const clientExpenseRows = Object.keys(byClientExpense)
+    .sort((a,b) => byClientExpense[b] - byClientExpense[a])
+    .map(name => `
+      <div class="summary-cat-row">
+        <span><span class="dot" style="background:var(--coral)"></span>${escapeHtml(name)}</span>
+        <span>${byClientExpense[name].toLocaleString('uk-UA')} грн</span>
+      </div>
+    `).join('');
+
   body.innerHTML = `
     <div class="summary-month">Місяць: поточний (${MONTH_NAMES[m]} ${y})</div>
     <div class="summary-row total-income"><span>Дохід</span><span class="amt" style="color:#2E9E96;">${monthIncome.toLocaleString('uk-UA')} грн</span></div>
@@ -2526,6 +2552,7 @@ function renderPurchaseTransfer(){
     <button class="transfer-to-income-btn" onclick="transferClientBalanceToIncome()" ${balance <= 0 ? 'disabled' : ''}>➜ Перевести в дохід від Провидіння</button>
     <div class="summary-divider"></div>
     ${catRows || '<div class="summary-empty">Поки немає закупівель за місяць.</div>'}
+    ${clientExpenseRows ? `<div class="progress-section-title" style="margin-top:10px;">Витрачено по клієнтах</div>${clientExpenseRows}` : ''}
   `;
   renderYearlyOverview();
 }
