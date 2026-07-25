@@ -1168,10 +1168,6 @@
               <input id="fClientAmount" type="text" inputmode="decimal" placeholder="Сума, грн">
               <button onclick="addClientIncome()">Надходження</button>
             </div>
-            <label style="display:flex; align-items:center; gap:5px; font-size:9.5px; font-weight:700; color:#5a7d79; margin-top:4px;">
-              <input type="checkbox" id="fClientAlreadyOnBoard" style="width:auto;">
-              Ця сума вже є на дошці (не додавати новий кристалик)
-            </label>
           </div>
         </div>
       </div>
@@ -2420,25 +2416,21 @@ function todayStr(){
 function addClientIncome(){
   const nameInput = document.getElementById('fClientName');
   const amountInput = document.getElementById('fClientAmount');
-  const alreadyOnBoard = document.getElementById('fClientAlreadyOnBoard').checked;
   const clientName = nameInput.value.trim();
   const amount = parseFloat(amountInput.value.replace(',', '.'));
   if(!amount || amount <= 0) return;
 
   const card = clientName ? findOrCreateClientCard(clientName) : null;
 
-  if(!alreadyOnBoard){
-    const emptyIdx = findEmptyBoardIndex();
-    if(emptyIdx !== -1){
-      boardCells[emptyIdx] = {icon: tierIcon('Клієнти', amount), category:'Клієнти', value:amount, pieces:1};
-      renderBoard();
-    }
+  const emptyIdx = findEmptyBoardIndex();
+  if(emptyIdx !== -1){
+    boardCells[emptyIdx] = {icon: tierIcon('Клієнти', amount), category:'Клієнти', value:amount, pieces:1};
+    renderBoard();
   }
 
   clientTx.push({id: clientTxIdCounter++, type:'income', label: card ? ('Від ' + card.name) : 'Надходження від клієнта', clientId: card ? card.id : null, amount, date: todayStr()});
   nameInput.value = '';
   amountInput.value = '';
-  document.getElementById('fClientAlreadyOnBoard').checked = false;
   renderClientFunds();
 }
 
