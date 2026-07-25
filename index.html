@@ -2870,6 +2870,32 @@ function renderOrders(){
     `;
   });
 
+  // everything else that recurs monthly but isn't Кредит/Комуналка (phone, subscriptions, etc.)
+  // gets its own collapsible bucket, separate from the always-open "Актуальне" list
+  const monthlyOthers = rest
+    .filter(o => o.recurring && !CONSTANT_CATEGORIES.includes(o.category))
+    .sort((a,b) => daysUntil(a.dueDate) - daysUntil(b.dueDate));
+  if(monthlyOthers.length > 0){
+    monthlyOthers.forEach(o => seenIds.add(o.id));
+    const key = 'monthly-others';
+    const total = monthlyOthers.reduce((s,o) => s + o.sum, 0);
+    const isOpen = openSections.has(key);
+    html += `
+    <div class="cat-section">
+      <div class="cat-section-toggle" onclick="toggleSection('${key}')">
+        <div class="cat-section-title">
+          <span class="cat-dot" style="background:#8E6ADB"></span>
+          Щомісячні платежі
+        </div>
+        <div class="cat-section-meta">${monthlyOthers.length} шт · ${total.toLocaleString('uk-UA')} грн <span class="toggle-arrow" id="arrow-${key}">${isOpen?'▾':'▸'}</span></div>
+      </div>
+      <div class="orders-strip cat-section-content${isOpen?'':' collapsed'}" data-key="${key}">
+        ${monthlyOthers.map(renderOrderCard).join('')}
+      </div>
+    </div>
+    `;
+  }
+
   // everything else (Прожитковий мінімум, Непередбачені витрати, Дуже треба, and any
   // unrecognized category) — always shown in full, never collapsed, never moved to "Срочно"
   const actual = rest.filter(o => !seenIds.has(o.id)).sort((a,b) => daysUntil(a.dueDate) - daysUntil(b.dueDate));
