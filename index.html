@@ -635,6 +635,15 @@
     padding:8px 12px;
     margin-bottom:8px;
   }
+  .cp-groups{margin-top:6px;}
+  .cp-client-group{margin-bottom:10px;}
+  .cp-client-group:last-child{margin-bottom:0;}
+  .cp-client-name{
+    font-size:11px;
+    font-weight:800;
+    color:#8a6a15;
+    margin-bottom:5px;
+  }
   .cat-section-toggle{
     display:flex;
     justify-content:space-between;
@@ -1227,6 +1236,7 @@
     <div id="dailySummaryBody"></div>
   </div>
   <div id="ordersByCategory"></div>
+  <div class="cat-section" id="clientPurchaseSection" style="display:none;"></div>
   <div class="cat-section" id="paidOrdersSection" style="display:none;">
     <div class="cat-section-toggle" onclick="toggleSection('paidOrders')">
       <div class="cat-section-title">
@@ -1335,7 +1345,7 @@
 
 <div class="overlay" id="purchaseOverlay">
   <div class="modal">
-    <h2>💎 Закупівля для клієнта</h2>
+    <h2>💎 Створити замовлення на матеріали</h2>
     <div id="purchaseFormStep">
       <div id="purchaseAvailable" style="font-size:12px; font-weight:800; color:#1E6E67; background:#EAF1F0; padding:7px 10px; border-radius:10px; margin-bottom:12px;"></div>
       <div class="field">
@@ -1354,22 +1364,32 @@
         </select>
       </div>
       <div class="field">
-        <label>Сума, грн</label>
+        <label>Орієнтовна сума, грн (можна змінити пізніше)</label>
         <input id="fPurchaseAmount" type="text" inputmode="decimal" placeholder="Наприклад: 350">
       </div>
       <div class="modal-actions">
         <button class="btn-cancel" onclick="closePurchaseModal()">Скасувати</button>
-        <button class="btn-save" onclick="proceedToPurchasePicker()">Списати</button>
+        <button class="btn-save" onclick="addToClientPurchaseQueue()">Додати в чергу</button>
       </div>
       <div id="purchaseError" style="color:#B5483D; font-size:12px; font-weight:700; margin-top:8px; display:none;"></div>
     </div>
-    <div id="purchasePickerStep" style="display:none;">
-      <div style="font-size:12.5px; color:#7a7264; font-weight:700; margin-bottom:12px;">Обери, з якого кристалика списати</div>
-      <div id="purchaseIconGrid" style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:6px;"></div>
-      <div class="modal-actions">
-        <button class="btn-cancel" onclick="closePurchaseModal()">Скасувати</button>
-      </div>
+
+  </div>
+</div>
+
+<div class="overlay" id="executePurchaseOverlay">
+  <div class="modal">
+    <h2 id="executePurchaseName">Провести оплату</h2>
+    <div class="field">
+      <label>Фінальна сума, грн (можна скоригувати)</label>
+      <input id="fExecuteAmount" type="text" inputmode="decimal" oninput="refreshExecuteIconGrid()">
     </div>
+    <div style="font-size:12.5px; color:#7a7264; font-weight:700; margin:10px 0;">Обери, з якого кристалика списати</div>
+    <div id="executeIconGrid" style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:6px;"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeExecutePurchaseModal()">Скасувати</button>
+    </div>
+    <div id="executePurchaseError" style="color:#B5483D; font-size:12px; font-weight:700; margin-top:8px; display:none;"></div>
   </div>
 </div>
 
@@ -2420,10 +2440,8 @@ function addClientIncome(){
   renderClientFunds();
 }
 
-let purchasingCategory = null;
-let purchasingAmount = null;
-let purchasingClient = null;
-let purchasingClientId = null;
+let clientPurchaseQueue = []; // {id, clientId, clientName, category, sum, createdDate}
+let clientPurchaseIdCounter = 1;
 
 function openPurchaseModal(){
   document.getElementById('purchaseError').style.display = 'none';
@@ -2434,30 +2452,22 @@ function openPurchaseModal(){
   clientSel.innerHTML = '<option value="">— не вказано —</option>' +
     activeClients.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
 
-  document.getElementById('purchaseFormStep').style.display = 'block';
-  document.getElementById('purchasePickerStep').style.display = 'none';
-
   const clientItems = boardCells.filter(c => c && c.category === 'Клієнти');
   const availEl = document.getElementById('purchaseAvailable');
   if(clientItems.length === 0){
     availEl.textContent = '💎 Поки немає грошей від клієнтів на дошці — спочатку додай надходження.';
   } else {
     const total = clientItems.reduce((s,c) => s + c.value, 0);
-    const pieces = clientItems.map(c => c.value.toLocaleString('uk-UA')).join(', ');
-    availEl.textContent = `💎 Доступно: ${total.toLocaleString('uk-UA')} грн (кристалики: ${pieces})`;
+    availEl.textContent = `💎 Доступно всього: ${total.toLocaleString('uk-UA')} грн`;
   }
 
   document.getElementById('purchaseOverlay').classList.add('show');
 }
 function closePurchaseModal(){
   document.getElementById('purchaseOverlay').classList.remove('show');
-  purchasingCategory = null;
-  purchasingAmount = null;
-  purchasingClient = null;
-  purchasingClientId = null;
 }
 
-function proceedToPurchasePicker(){
+function addToClientPurchaseQueue(){
   const category = document.getElementById('fPurchaseCategory').value;
   const clientSel = document.getElementById('fPurchaseClient');
   const clientId = clientSel.value ? parseInt(clientSel.value) : null;
@@ -2469,12 +2479,48 @@ function proceedToPurchasePicker(){
     errEl.style.display = 'block';
     return;
   }
+  errEl.style.display = 'none';
 
+  clientPurchaseQueue.push({
+    id: clientPurchaseIdCounter++,
+    clientId: clientCard ? clientCard.id : null,
+    clientName: clientCard ? clientCard.name : 'Без клієнта',
+    category,
+    sum: amount,
+    createdDate: todayStr()
+  });
+
+  closePurchaseModal();
+  renderClientPurchaseQueue();
+  scheduleSync();
+}
+
+function deleteClientPurchase(id){
+  clientPurchaseQueue = clientPurchaseQueue.filter(p => p.id !== id);
+  renderClientPurchaseQueue();
+}
+
+let executingPurchaseId = null;
+
+function openExecutePurchaseModal(id){
+  const purchase = clientPurchaseQueue.find(p => p.id === id);
+  if(!purchase) return;
+  executingPurchaseId = id;
+
+  document.getElementById('executePurchaseName').textContent = `Провести: ${purchase.category} — ${purchase.clientName}`;
+  document.getElementById('fExecuteAmount').value = purchase.sum;
+  document.getElementById('executePurchaseError').style.display = 'none';
+  refreshExecuteIconGrid();
+  document.getElementById('executePurchaseOverlay').classList.add('show');
+}
+
+function refreshExecuteIconGrid(){
+  const amount = parseFloat(document.getElementById('fExecuteAmount').value.replace(',', '.')) || 0;
+  const grid = document.getElementById('executeIconGrid');
   const usableIndexes = boardCells
     .map((c, i) => (c && c.category === 'Клієнти' && c.value >= amount) ? i : null)
     .filter(i => i !== null);
 
-  const grid = document.getElementById('purchaseIconGrid');
   if(usableIndexes.length === 0){
     const hasAny = boardCells.some(c => c && c.category === 'Клієнти');
     grid.innerHTML = hasAny
@@ -2482,22 +2528,97 @@ function proceedToPurchasePicker(){
       : '<div style="font-size:12.5px; color:#8a7264;">Поки немає грошей від клієнтів на дошці.</div>';
   } else {
     grid.innerHTML = usableIndexes.map(i => `
-      <div class="icon-choice" onclick="finalizePurchase(${i})" style="flex-direction:column; gap:2px;">
+      <div class="icon-choice" onclick="confirmExecutePurchase(${i})" style="flex-direction:column; gap:2px;">
         <div>${boardCells[i].icon}</div>
         <div style="font-size:9px; font-weight:800; color:#8a7264;">${boardCells[i].value.toLocaleString('uk-UA')}</div>
       </div>
     `).join('');
   }
-
-  purchasingCategory = category;
-  purchasingAmount = amount;
-  purchasingClient = clientCard ? clientCard.name : null;
-  purchasingClientId = clientCard ? clientCard.id : null;
-  document.getElementById('purchaseFormStep').style.display = 'none';
-  document.getElementById('purchasePickerStep').style.display = 'block';
 }
 
-let jarSourceCellIdx = null;
+function closeExecutePurchaseModal(){
+  document.getElementById('executePurchaseOverlay').classList.remove('show');
+  executingPurchaseId = null;
+}
+
+function confirmExecutePurchase(cellIdx){
+  const purchase = clientPurchaseQueue.find(p => p.id === executingPurchaseId);
+  const item = boardCells[cellIdx];
+  const errEl = document.getElementById('executePurchaseError');
+  const amount = parseFloat(document.getElementById('fExecuteAmount').value.replace(',', '.'));
+  if(!purchase || !item) return;
+  if(!amount || amount <= 0 || amount > item.value){
+    errEl.textContent = 'Сума має бути більше нуля і не більше суми кристалика';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const remaining = item.value - amount;
+  boardCells[cellIdx] = remaining <= 0
+    ? null
+    : {icon: item.icon, category: item.category, value: remaining, pieces:1};
+
+  clientTx.push({id: clientTxIdCounter++, type:'expense', label: purchase.category, client: purchase.clientName, clientId: purchase.clientId, amount, date: todayStr()});
+  clientPurchaseQueue = clientPurchaseQueue.filter(p => p.id !== purchase.id);
+
+  closeExecutePurchaseModal();
+  renderClientPurchaseQueue();
+  renderClientFunds();
+  renderBoard();
+}
+
+function renderClientPurchaseQueue(){
+  const container = document.getElementById('clientPurchaseSection');
+  if(!container) return;
+
+  if(clientPurchaseQueue.length === 0){
+    container.style.display = 'none';
+    scheduleSync();
+    return;
+  }
+  container.style.display = 'block';
+
+  const byClient = {};
+  clientPurchaseQueue.forEach(p => {
+    if(!byClient[p.clientName]) byClient[p.clientName] = [];
+    byClient[p.clientName].push(p);
+  });
+
+  const key = 'clientPurchaseQueue';
+  const isOpen = openSections.has(key);
+  const total = clientPurchaseQueue.reduce((s,p) => s + p.sum, 0);
+
+  const groupsHtml = Object.keys(byClient).map(clientName => `
+    <div class="cp-client-group">
+      <div class="cp-client-name">${escapeHtml(clientName)}</div>
+      ${byClient[clientName].map(p => `
+        <div class="order-card" style="--cat-color:#C9A030">
+          <div class="card-controls">
+            <button class="ctrl-btn" onclick="deleteClientPurchase(${p.id})" title="Видалити">✕</button>
+          </div>
+          <div class="name">${escapeHtml(p.category)}</div>
+          <div class="sum">${p.sum.toLocaleString('uk-UA')} грн</div>
+          <div class="cat">Ательє</div>
+          <button class="pay-btn" style="background:#C9A030;" onclick="openExecutePurchaseModal(${p.id})">💎 Провести</button>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+
+  container.innerHTML = `
+    <div class="cat-section-toggle" onclick="toggleSection('${key}')">
+      <div class="cat-section-title">
+        <span class="cat-dot" style="background:#C9A030"></span>
+        Ательє
+      </div>
+      <div class="cat-section-meta">${clientPurchaseQueue.length} шт · ${total.toLocaleString('uk-UA')} грн <span class="toggle-arrow" id="arrow-${key}">${isOpen?'▾':'▸'}</span></div>
+    </div>
+    <div class="cp-groups cat-section-content${isOpen?'':' collapsed'}" data-key="${key}">
+      ${groupsHtml}
+    </div>
+  `;
+  scheduleSync();
+}
 
 const JAR_STEPS = ['jarChoiceStep','jarFormStep','jarWithdrawQ1Step','jarWithdrawQ2Step','jarWithdrawQ3Step','jarWithdrawDeclineStep','jarWithdrawAmountStep'];
 
@@ -2506,6 +2627,8 @@ function showJarStep(stepId){
     document.getElementById(id).style.display = (id === stepId) ? 'block' : 'none';
   });
 }
+
+let jarSourceCellIdx = null;
 
 function openJarModal(){
   document.getElementById('jarCurrentBalance').textContent = jarBalance.toLocaleString('uk-UA');
@@ -2710,22 +2833,6 @@ function confirmJar10ManualTransfer(){
   jar10Balance += amount;
 
   closeJar10Modal();
-  renderBoard();
-}
-
-function finalizePurchase(cellIdx){
-  const item = boardCells[cellIdx];
-  if(!item || purchasingAmount == null) return;
-
-  const remaining = item.value - purchasingAmount;
-  boardCells[cellIdx] = remaining <= 0
-    ? null
-    : {icon: item.icon, category: item.category, value: remaining, pieces:1};
-
-  clientTx.push({id: clientTxIdCounter++, type:'expense', label: purchasingCategory, client: purchasingClient, clientId: purchasingClientId, amount: purchasingAmount, date: todayStr()});
-
-  closePurchaseModal();
-  renderClientFunds();
   renderBoard();
 }
 
@@ -3041,6 +3148,8 @@ function toggleSection(key){
     renderSummary();
   } else if(key === 'paidOrders'){
     renderPaidOrders();
+  } else if(key === 'clientPurchaseQueue'){
+    renderClientPurchaseQueue();
   } else if(SIMPLE_TOGGLE_SECTIONS.includes(key)){
     applySectionState();
   } else {
@@ -3441,6 +3550,7 @@ function gatherState(){
     debts, debtIdCounter,
     clientDebts, clientDebtIdCounter,
     clientCards, clientCardIdCounter,
+    clientPurchaseQueue, clientPurchaseIdCounter,
     boardCells, totalSum, jarBalance, jar10Balance,
     incomeLog, expenseLog,
     clientTx, archivedClientTx, clientTxIdCounter,
@@ -3462,6 +3572,8 @@ function applyState(data){
   clientDebtIdCounter = data.clientDebtIdCounter || 1;
   clientCards = data.clientCards || [];
   clientCardIdCounter = data.clientCardIdCounter || 1;
+  clientPurchaseQueue = data.clientPurchaseQueue || [];
+  clientPurchaseIdCounter = data.clientPurchaseIdCounter || 1;
   boardCells = data.boardCells || new Array(BOARD_COLS*BOARD_ROWS).fill(null);
   totalSum = data.totalSum || 0;
   jarBalance = data.jarBalance || 0;
@@ -3487,6 +3599,7 @@ function renderEverything(){
   renderClientDebts();
   renderDebts();
   renderOrders();
+  renderClientPurchaseQueue();
   renderPaidOrders();
   renderArchive();
   renderBoard();
@@ -3670,6 +3783,7 @@ renderClientFunds();
 renderClientDebts();
 renderDebts();
 renderOrders();
+renderClientPurchaseQueue();
 renderPaidOrders();
 renderArchive();
 renderBoard();
