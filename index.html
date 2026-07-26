@@ -490,6 +490,7 @@
   .cb-card .cb-row .cb-val.income{color:#2E9E96;}
   .cb-card .cb-row .cb-val.expense{color:var(--coral);}
   .cb-card .cb-row .cb-val.balance{color:#1E6E67;}
+  .cb-card .cb-row .cb-val.planned{color:#C9A030;}
   .client-purchase-btn{
     background:var(--coral);
   }
@@ -2571,12 +2572,14 @@ function addToClientPurchaseQueue(){
 
   closePurchaseModal();
   renderClientPurchaseQueue();
+  renderClientBalanceCards();
   scheduleSync();
 }
 
 function deleteClientPurchase(id){
   clientPurchaseQueue = clientPurchaseQueue.filter(p => p.id !== id);
   renderClientPurchaseQueue();
+  renderClientBalanceCards();
 }
 
 let executingPurchaseId = null;
@@ -2944,11 +2947,13 @@ function renderClientBalanceCards(){
     const income = tx.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
     const expense = tx.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
     const balance = income - expense;
+    const planned = clientPurchaseQueue.filter(p => p.clientId === c.id).reduce((s,p) => s + p.sum, 0);
     return `
       <div class="cb-card">
         <div class="cb-name">${escapeHtml(c.name)}</div>
         <div class="cb-row"><span>Отримано</span><span class="cb-val income">${income.toLocaleString('uk-UA')} грн</span></div>
         <div class="cb-row"><span>Витрачено</span><span class="cb-val expense">${expense.toLocaleString('uk-UA')} грн</span></div>
+        ${planned > 0 ? `<div class="cb-row"><span>Заплановано</span><span class="cb-val planned">${planned.toLocaleString('uk-UA')} грн</span></div>` : ''}
         <div class="cb-row"><span>Залишок</span><span class="cb-val balance">${balance.toLocaleString('uk-UA')} грн</span></div>
       </div>
     `;
