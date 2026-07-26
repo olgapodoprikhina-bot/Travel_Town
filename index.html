@@ -186,6 +186,32 @@
   }
   .summary-cat-row .dot{width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:5px;}
   .summary-empty{font-size:11px; color:#a89a83;}
+  .period-range-row{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    margin-bottom:6px;
+  }
+  .period-range-row input{
+    flex:1;
+    min-width:0;
+    border:2px solid #E9DCC0;
+    border-radius:9px;
+    padding:6px 7px;
+    font-family:'Nunito',sans-serif;
+    font-size:11px;
+    font-weight:700;
+  }
+  .period-range-row span{color:#a89a83; font-weight:800; font-size:11px;}
+  .reconcile-box{
+    margin-top:10px;
+    padding:8px 10px;
+    border-radius:10px;
+    font-size:11px;
+    font-weight:700;
+  }
+  .reconcile-box.match{background:#E4F4E6; color:#3A8A4E;}
+  .reconcile-box.mismatch{background:#FFE0DC; color:var(--coral);}
   .cashflow-row{
     display:flex;
     gap:10px;
@@ -1172,6 +1198,26 @@
           <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Нд</span>
         </div>
         <div class="calendar-grid" id="calendarGrid"></div>
+      </div>
+
+      <div class="summary-card">
+        <div class="section-toggle" onclick="toggleSection('periodSummary')">
+          <span>🔍 Зведення за період</span>
+          <span class="toggle-arrow" id="arrow-periodSummary">▸</span>
+        </div>
+        <div id="periodSummaryContent" class="section-content collapsed">
+          <div class="period-range-row">
+            <input type="date" id="fPeriodFrom" onchange="renderPeriodSummary()">
+            <span>—</span>
+            <input type="date" id="fPeriodTo" onchange="renderPeriodSummary()">
+          </div>
+          <div class="quick-date-row">
+            <button type="button" onclick="setPeriodRange('month')">Цей місяць</button>
+            <button type="button" onclick="setPeriodRange('year')">Цей рік</button>
+            <button type="button" onclick="setPeriodRange('all')">Весь час</button>
+          </div>
+          <div id="periodSummaryBody" style="margin-top:8px;"></div>
+        </div>
       </div>
 
       <div class="summary-card">
@@ -3058,6 +3104,7 @@ function renderSummary(){
     ${catRows || '<div class="summary-empty">Поки немає витрат за місяць.</div>'}
   `;
   renderYearlyOverview();
+  renderPeriodSummary();
 }
 
 function renderPurchaseTransfer(){
@@ -3132,6 +3179,68 @@ function renderPurchaseTransfer(){
     ${clientExpenseRows ? `<div class="progress-section-title" style="margin-top:10px;">Витрачено по клієнтах</div>${clientExpenseRows}` : ''}
   `;
   renderYearlyOverview();
+}
+
+function setPeriodRange(kind){
+  const today = new Date();
+  const fromInput = document.getElementById('fPeriodFrom');
+  const toInput = document.getElementById('fPeriodTo');
+  const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+  if(kind === 'month'){
+    fromInput.value = fmt(new Date(today.getFullYear(), today.getMonth(), 1));
+    toInput.value = fmt(today);
+  } else if(kind === 'year'){
+    fromInput.value = fmt(new Date(today.getFullYear(), 0, 1));
+    toInput.value = fmt(today);
+  } else {
+    fromInput.value = '';
+    toInput.value = '';
+  }
+  renderPeriodSummary();
+}
+
+function renderPeriodSummary(){
+  const body = document.getElementById('periodSummaryBody');
+  if(!body) return;
+
+  const fromVal = document.getElementById('fPeriodFrom').value;
+  const toVal = document.getElementById('fPeriodTo').value;
+  const inRange = e => {
+    if(fromVal && e.date < fromVal) return false;
+    if(toVal && e.date > toVal) return false;
+    return true;
+  };
+
+  const periodIncome = incomeLog.filter(inRange).reduce((s,e) => s + e.amount, 0);
+  const periodExpense = expenseLog.filter(inRange).reduce((s,e) => s + e.amount, 0);
+  const periodDiff = periodIncome - periodExpense;
+
+  // reconciliation: what the balance SHOULD be (all-time income minus all-time expense)
+  // vs what's actually sitting on the board right now
+  const allTimeIncome = incomeLog.reduce((s,e) => s + e.amount, 0);
+  const allTimeExpense = expenseLog.reduce((s,e) => s + e.amount, 0);
+  const expectedBalance = allTimeIncome - allTimeExpense;
+  const actualBalance = totalSum;
+  const diff = actualBalance - expectedBalance;
+  const matches = Math.abs(diff) < 0.01;
+
+  const label = fromVal || toVal
+    ? `${fromVal || '…'} — ${toVal || '…'}`
+    : 'весь час';
+
+  body.innerHTML = `
+    <div class="summary-month">Період: ${label}</div>
+    <div class="summary-row total-income"><span>Дохід за період</span><span class="amt">${periodIncome.toLocaleString('uk-UA')} грн</span></div>
+    <div class="summary-row total-expense"><span>Витрата за період</span><span class="amt">${periodExpense.toLocaleString('uk-UA')} грн</span></div>
+    <div class="summary-row"><span>Різниця</span><span class="amt" style="color:${periodDiff>=0?'#3A8A4E':'var(--coral)'}; font-weight:800;">${periodDiff>=0?'+':''}${periodDiff.toLocaleString('uk-UA')} грн</span></div>
+    <div class="reconcile-box ${matches?'match':'mismatch'}">
+      ${matches
+        ? `✓ Сходиться: на дошці ${actualBalance.toLocaleString('uk-UA')} грн — саме стільки і має бути (дохід мінус витрата за весь час).`
+        : `⚠ Розбіжність: за розрахунком має бути ${expectedBalance.toLocaleString('uk-UA')} грн, а на дошці зараз ${actualBalance.toLocaleString('uk-UA')} грн (різниця ${diff>0?'+':''}${diff.toLocaleString('uk-UA')} грн). Можливо, щось було змінено вручну (наприклад через консоль).`
+      }
+    </div>
+  `;
 }
 
 function renderYearlyOverview(){
@@ -3253,7 +3362,7 @@ function escalateOverdueUtilities(){
 
 let openSections = new Set(); // 'sources', 'debts', 'cat-<Category>'
 
-const SIMPLE_TOGGLE_SECTIONS = ['sources','debts','summary','purchaseTransfer','yearly','clientDebts','clientCards'];
+const SIMPLE_TOGGLE_SECTIONS = ['sources','debts','summary','purchaseTransfer','yearly','clientDebts','clientCards','periodSummary'];
 
 function toggleSection(key){
   if(openSections.has(key)) openSections.delete(key);
