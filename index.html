@@ -3213,8 +3213,59 @@ function renderPeriodSummary(){
   };
 
   const periodIncome = incomeLog.filter(inRange).reduce((s,e) => s + e.amount, 0);
-  const periodExpense = expenseLog.filter(inRange).reduce((s,e) => s + e.amount, 0);
+  const periodExpenseEntries = expenseLog.filter(inRange);
+  const periodExpense = periodExpenseEntries.reduce((s,e) => s + e.amount, 0);
   const periodDiff = periodIncome - periodExpense;
+
+  // detailed breakdown: personal expenses by category
+  const byCategory = {};
+  periodExpenseEntries.forEach(e => {
+    byCategory[e.category] = (byCategory[e.category] || 0) + e.amount;
+  });
+  const catRows = Object.keys(byCategory)
+    .sort((a,b) => byCategory[b] - byCategory[a])
+    .map(cat => `
+      <div class="summary-cat-row">
+        <span><span class="dot" style="background:${CAT_COLORS[cat]||'#a89a83'}"></span>${escapeHtml(cat)}</span>
+        <span>${byCategory[cat].toLocaleString('uk-UA')} грн</span>
+      </div>
+    `).join('');
+
+  // client money, same period, kept separate from personal figures
+  const clientTxInRange = t => {
+    if(fromVal && t.date < fromVal) return false;
+    if(toVal && t.date > toVal) return false;
+    return true;
+  };
+  const periodClientTx = clientTx.filter(clientTxInRange);
+  const clientIncome = periodClientTx.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
+  const clientExpense = periodClientTx.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
+
+  const byClientName = {};
+  periodClientTx.filter(t => t.type === 'income').forEach(t => {
+    byClientName[t.label] = (byClientName[t.label] || 0) + t.amount;
+  });
+  const clientIncomeRows = Object.keys(byClientName)
+    .sort((a,b) => byClientName[b] - byClientName[a])
+    .map(name => `
+      <div class="summary-cat-row">
+        <span><span class="dot" style="background:#2E9E96"></span>${escapeHtml(name)}</span>
+        <span>${byClientName[name].toLocaleString('uk-UA')} грн</span>
+      </div>
+    `).join('');
+
+  const byClientExpenseCat = {};
+  periodClientTx.filter(t => t.type === 'expense').forEach(t => {
+    byClientExpenseCat[t.label] = (byClientExpenseCat[t.label] || 0) + t.amount;
+  });
+  const clientExpenseRows = Object.keys(byClientExpenseCat)
+    .sort((a,b) => byClientExpenseCat[b] - byClientExpenseCat[a])
+    .map(cat => `
+      <div class="summary-cat-row">
+        <span><span class="dot" style="background:var(--coral)"></span>${escapeHtml(cat)}</span>
+        <span>${byClientExpenseCat[cat].toLocaleString('uk-UA')} грн</span>
+      </div>
+    `).join('');
 
   // reconciliation: what the balance SHOULD be (all-time income minus all-time expense)
   // vs what's actually sitting on the board right now
@@ -3234,7 +3285,17 @@ function renderPeriodSummary(){
     <div class="summary-row total-income"><span>Дохід за період</span><span class="amt">${periodIncome.toLocaleString('uk-UA')} грн</span></div>
     <div class="summary-row total-expense"><span>Витрата за період</span><span class="amt">${periodExpense.toLocaleString('uk-UA')} грн</span></div>
     <div class="summary-row"><span>Різниця</span><span class="amt" style="color:${periodDiff>=0?'#3A8A4E':'var(--coral)'}; font-weight:800;">${periodDiff>=0?'+':''}${periodDiff.toLocaleString('uk-UA')} грн</span></div>
-    <div class="reconcile-box ${matches?'match':'mismatch'}">
+
+    <div class="progress-section-title">Витрата по категоріях</div>
+    ${catRows || '<div class="summary-empty">Немає витрат за період.</div>'}
+
+    <div class="progress-section-title" style="margin-top:12px;">💎 Клієнти (окремо)</div>
+    <div class="summary-row total-income"><span>Дохід від клієнтів</span><span class="amt" style="color:#2E9E96;">${clientIncome.toLocaleString('uk-UA')} грн</span></div>
+    ${clientIncomeRows ? `<div style="margin:2px 0 6px 4px;">${clientIncomeRows}</div>` : ''}
+    <div class="summary-row total-expense"><span>Витрата клієнтських грошей</span><span class="amt">${clientExpense.toLocaleString('uk-UA')} грн</span></div>
+    ${clientExpenseRows ? `<div style="margin:2px 0 6px 4px;">${clientExpenseRows}</div>` : ''}
+
+    <div class="reconcile-box ${matches?'match':'mismatch'}" style="margin-top:12px;">
       ${matches
         ? `✓ Сходиться: на дошці ${actualBalance.toLocaleString('uk-UA')} грн — саме стільки і має бути (дохід мінус витрата за весь час).`
         : `⚠ Розбіжність: за розрахунком має бути ${expectedBalance.toLocaleString('uk-UA')} грн, а на дошці зараз ${actualBalance.toLocaleString('uk-UA')} грн (різниця ${diff>0?'+':''}${diff.toLocaleString('uk-UA')} грн). Можливо, щось було змінено вручну (наприклад через консоль).`
