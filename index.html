@@ -1874,9 +1874,9 @@ function tryMerge(a, b){
   const tierIdx = icons.indexOf(a.icon);
   if(tierIdx === -1) return null;
 
-  const mergedClientName = (a.clientName !== undefined || b.clientName !== undefined)
-    ? (a.clientName === b.clientName ? a.clientName : 'Змішано')
-    : undefined;
+  const aName = a.clientName || null;
+  const bName = b.clientName || null;
+  const mergedClientName = (aName || bName) ? (aName === bName ? aName : 'Змішано') : null;
 
   if(tierIdx + 1 < icons.length){
     // normal ladder upgrade to the next tier
@@ -2223,7 +2223,7 @@ function confirmPay(cellIdx){
   if(remaining <= 0){
     boardCells[cellIdx] = null;
   } else {
-    boardCells[cellIdx] = {icon: tierIcon(item.category, remaining), category:item.category, value:remaining, pieces:1, clientName: item.clientName};
+    boardCells[cellIdx] = {icon: tierIcon(item.category, remaining), category:item.category, value:remaining, pieces:1, clientName: item.clientName || null};
   }
 
   closePayModal();
@@ -2816,7 +2816,7 @@ function confirmExecutePurchase(cellIdx){
   const remaining = item.value - amount;
   boardCells[cellIdx] = remaining <= 0
     ? null
-    : {icon: item.icon, category: item.category, value: remaining, pieces:1, clientName: item.clientName};
+    : {icon: item.icon, category: item.category, value: remaining, pieces:1, clientName: item.clientName || null};
 
   clientTx.push({id: clientTxIdCounter++, type:'expense', label: purchase.category, client: purchase.clientName, clientId: purchase.clientId, amount, date: todayStr()});
   clientPurchaseQueue = clientPurchaseQueue.filter(p => p.id !== purchase.id);
@@ -4173,8 +4173,11 @@ function scheduleSync(){
 function doSync(){
   const payload = gatherState();
   payload._updatedAt = Date.now();
-  try{ localStorage.setItem(LS_STATE_KEY, JSON.stringify(payload)); }catch{}
-  if(window.fbSave) window.fbSave(payload);
+  const localStr = JSON.stringify(payload);
+  try{ localStorage.setItem(LS_STATE_KEY, localStr); }catch{}
+  // Firestore rejects any field with value `undefined` — this round-trip strips them out
+  // (JSON.stringify silently drops undefined keys), so a stray undefined never breaks sync.
+  if(window.fbSave) window.fbSave(JSON.parse(localStr));
 }
 
 // On load: prefer whichever of (local cache) / (Firebase) is newer, then subscribe
