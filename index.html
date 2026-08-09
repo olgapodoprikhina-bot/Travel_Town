@@ -2867,6 +2867,44 @@ function deleteClientPurchase(id){
   renderClientBalanceCards();
 }
 
+function payQueuedPurchaseWithOwnMoney(id){
+  const purchase = clientPurchaseQueue.find(p => p.id === id);
+  if(!purchase) return;
+
+  // 1) deduct from her own personal money (she's fronting the purchase)
+  const usableIndexes = boardCells
+    .map((c, i) => (c && c.category !== 'Клієнти' && c.value >= purchase.sum) ? i : null)
+    .filter(i => i !== null);
+  if(usableIndexes.length === 0){
+    alert('Не вистачає особистих грошей на дошці для цієї суми.');
+    return;
+  }
+  const cellIdx = usableIndexes[0];
+  const item = boardCells[cellIdx];
+  const remaining = item.value - purchase.sum;
+  boardCells[cellIdx] = remaining <= 0
+    ? null
+    : {icon: tierIcon(item.category, remaining), category: item.category, value: remaining, pieces:1};
+  totalSum -= purchase.sum;
+  expenseLog.push({id: logIdCounter++, date: todayStr(), category: 'Ательє', item: purchase.category, amount: purchase.sum});
+
+  // 2) log the expense against the client's own ledger, so their card shows it correctly
+  if(purchase.clientId){
+    clientTx.push({id: clientTxIdCounter++, type:'expense', label: purchase.category, client: purchase.clientName, clientId: purchase.clientId, amount: purchase.sum, date: todayStr()});
+  }
+
+  // 3) she's now owed this amount back from the client
+  clientReceivables.push({id: clientReceivableIdCounter++, name: purchase.clientName, sum: purchase.sum});
+
+  clientPurchaseQueue = clientPurchaseQueue.filter(p => p.id !== id);
+
+  renderClientPurchaseQueue();
+  renderClientFunds();
+  renderClientReceivables();
+  renderSummary();
+  renderBoard();
+}
+
 let executingPurchaseId = null;
 
 function openExecutePurchaseModal(id){
@@ -3055,6 +3093,7 @@ function renderClientPurchaseQueue(){
             <div class="sum">${p.sum.toLocaleString('uk-UA')} грн</div>
             ${p.note ? `<div class="due-badge" style="background:#FFF3D6; color:#8a6a15;">${escapeHtml(p.note)}</div>` : ''}
             <button class="pay-btn" style="background:#C9A030;" onclick="openExecutePurchaseModal(${p.id})">💎 Провести</button>
+            <button class="pay-btn" style="background:#1E8FC4; margin-top:4px;" onclick="payQueuedPurchaseWithOwnMoney(${p.id})">💳 Оплачено особистими</button>
           </div>
         `).join('')}
       </div>
