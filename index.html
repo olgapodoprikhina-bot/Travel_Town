@@ -212,6 +212,58 @@
   }
   .reconcile-box.match{background:#E4F4E6; color:#3A8A4E;}
   .reconcile-box.mismatch{background:#FFE0DC; color:var(--coral);}
+
+  .dbd-day{margin-bottom:10px;}
+  .dbd-day:last-child{margin-bottom:0;}
+  .dbd-day-label{
+    font-size:10.5px;
+    font-weight:800;
+    color:#8a7264;
+    margin-bottom:4px;
+    text-transform:capitalize;
+  }
+  .dbd-entry{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    background:#fff;
+    border-radius:9px;
+    padding:5px 7px;
+    margin-bottom:4px;
+  }
+  .dbd-entry .dbd-type{font-size:12px; flex-shrink:0;}
+  .dbd-entry .dbd-cat{
+    flex:1;
+    min-width:0;
+    font-size:10.5px;
+    font-weight:700;
+    color:#6b6255;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .dbd-entry input{
+    width:60px;
+    border:1.5px solid #E9DCC0;
+    border-radius:7px;
+    padding:3px 5px;
+    font-family:'Nunito',sans-serif;
+    font-size:10.5px;
+    font-weight:800;
+    text-align:right;
+  }
+  .dbd-entry input.income{color:#2E9E96;}
+  .dbd-entry input.expense{color:var(--coral);}
+  .dbd-entry button{
+    border:none;
+    background:none;
+    color:#c9b89a;
+    font-size:10px;
+    cursor:pointer;
+    padding:2px 4px;
+    flex-shrink:0;
+  }
+  .dbd-entry button:hover{color:var(--coral);}
   .cashflow-row{
     display:flex;
     gap:10px;
@@ -1221,6 +1273,25 @@
       </div>
 
       <div class="summary-card">
+        <div class="section-toggle" onclick="toggleSection('dayByDay')">
+          <span>📆 За днями (можна виправити)</span>
+          <span class="toggle-arrow" id="arrow-dayByDay">▸</span>
+        </div>
+        <div id="dayByDayContent" class="section-content collapsed">
+          <div class="period-range-row">
+            <input type="date" id="fDbdFrom" onchange="renderDayByDay()">
+            <span>—</span>
+            <input type="date" id="fDbdTo" onchange="renderDayByDay()">
+          </div>
+          <div class="quick-date-row">
+            <button type="button" onclick="setDbdRange('week')">Цей тиждень</button>
+            <button type="button" onclick="setDbdRange('month')">Цей місяць</button>
+          </div>
+          <div id="dayByDayBody" style="margin-top:8px;"></div>
+        </div>
+      </div>
+
+      <div class="summary-card">
         <div class="section-toggle" onclick="toggleSection('yearly')">
           <span>📅 Річний огляд</span>
           <span class="toggle-arrow" id="arrow-yearly">▸</span>
@@ -1488,6 +1559,18 @@
   </div>
 </div>
 
+<div class="overlay" id="deleteChoiceOverlay">
+  <div class="modal">
+    <h2>Видалити платіж</h2>
+    <div style="font-size:13px; color:#6b6255; font-weight:600; margin-bottom:16px;">Це повторюваний платіж. Що видалити?</div>
+    <div class="modal-actions" style="flex-direction:column; gap:8px;">
+      <button class="btn-save" style="width:100%;" onclick="confirmDeleteThisInstance()">Тільки цей місяць</button>
+      <button class="btn-save" style="width:100%; background:var(--coral);" onclick="confirmDeleteWholeSeries()">Всю серію (більше не повторювати)</button>
+      <button class="btn-cancel" style="width:100%;" onclick="closeDeleteChoiceModal()">Скасувати</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="quickOrderOverlay">
   <div class="modal">
     <h2>⚡ Швидке замовлення</h2>
@@ -1736,8 +1819,14 @@ function findEmptyBoardIndex(){
   // JAR_INDEX / JAR10_INDEX are permanently reserved for the jars
   return boardCells.findIndex((c, i) => i !== JAR_INDEX && i !== JAR10_INDEX && c === null);
 }
-let incomeLog = [];  // {date:'YYYY-MM-DD', category, amount}
-let expenseLog = []; // {date:'YYYY-MM-DD', category, amount}
+let incomeLog = [];  // {id, date:'YYYY-MM-DD', category, amount}
+let expenseLog = []; // {id, date:'YYYY-MM-DD', category, amount}
+let logIdCounter = 1;
+
+function ensureLogIds(){
+  incomeLog.forEach(e => { if(e.id === undefined) e.id = logIdCounter++; });
+  expenseLog.forEach(e => { if(e.id === undefined) e.id = logIdCounter++; });
+}
 
 // Client money for materials — fully separate ledger, never touches totalSum/board/orders.
 let clientTx = []; // {id, type:'income'|'expense', label, clientId, amount, date}
@@ -1910,14 +1999,46 @@ function editOrder(id){
   document.getElementById('overlay').classList.add('show');
 }
 
+let pendingDeleteId = null;
+
 function deleteOrderDraft(id){
   const order = orders.find(o => o.id === id);
-  if(order && order.recurring && order.templateId && order.dueDate){
+  if(order && order.recurring && order.templateId){
+    pendingDeleteId = id;
+    document.getElementById('deleteChoiceOverlay').classList.add('show');
+    return;
+  }
+  orders = orders.filter(o => o.id !== id);
+  renderOrders();
+}
+
+function closeDeleteChoiceModal(){
+  document.getElementById('deleteChoiceOverlay').classList.remove('show');
+  pendingDeleteId = null;
+}
+
+function confirmDeleteThisInstance(){
+  const order = orders.find(o => o.id === pendingDeleteId);
+  if(order && order.dueDate){
     // remember this exact month was deleted on purpose, so it won't be recreated —
     // the rest of the series (other months) keeps working normally
     skippedRecurringInstances.push({templateId: order.templateId, date: order.dueDate});
   }
-  orders = orders.filter(o => o.id !== id);
+  orders = orders.filter(o => o.id !== pendingDeleteId);
+  closeDeleteChoiceModal();
+  renderOrders();
+}
+
+function confirmDeleteWholeSeries(){
+  const order = orders.find(o => o.id === pendingDeleteId);
+  if(!order) { closeDeleteChoiceModal(); return; }
+  const tid = order.templateId;
+  // cancel the whole series: remove every active instance sharing this templateId,
+  // and stop already-archived/paid instances from being treated as recurring anymore
+  orders = orders.filter(o => o.templateId !== tid);
+  archivedOrders.forEach(o => { if(o.templateId === tid) o.recurring = false; });
+  paidOrders.forEach(o => { if(o.templateId === tid) o.recurring = false; });
+  closeDeleteChoiceModal();
   renderOrders();
 }
 
@@ -2078,7 +2199,7 @@ function confirmPay(cellIdx){
     clientTx.push({id: clientTxIdCounter++, type:'expense', label: order.category, client: null, amount: payAmount, date: todayStr()});
   } else {
     totalSum -= payAmount;
-    expenseLog.push({date: todayStr(), category: order.category, amount: payAmount});
+    expenseLog.push({id: logIdCounter++, date: todayStr(), category: order.category, item: order.expenseItem || null, amount: payAmount});
   }
 
   if(order.debtId){
@@ -2198,7 +2319,7 @@ function placeFromSource(id){
   }
   boardCells[emptyIdx] = {icon, category:s.category, value:amt, pieces:1};
   totalSum += amt;
-  incomeLog.push({date: todayStr(), category: s.category, amount: amt});
+  incomeLog.push({id: logIdCounter++, date: todayStr(), category: s.category, amount: amt});
   input.value = '';
   renderBoard();
   renderSummary();
@@ -2858,7 +2979,7 @@ function confirmJarWithdraw(){
     boardCells[emptyIdx] = {icon: tierIcon('Від Провидіння', amount), category:'Від Провидіння', value: amount, pieces:1};
   }
   totalSum += amount;
-  incomeLog.push({date: todayStr(), category: 'Від Провидіння', amount});
+  incomeLog.push({id: logIdCounter++, date: todayStr(), category: 'Від Провидіння', amount});
 
   closeJarModal();
   renderBoard();
@@ -3084,14 +3205,17 @@ function renderSummary(){
   }
 
   const byCategory = {};
+  const catColorFor = {};
   monthExpense.forEach(e => {
-    byCategory[e.category] = (byCategory[e.category] || 0) + e.amount;
+    const key = e.item ? `${e.item} (${e.category})` : e.category;
+    byCategory[key] = (byCategory[key] || 0) + e.amount;
+    catColorFor[key] = CAT_COLORS[e.category] || '#a89a83';
   });
   const catRows = Object.keys(byCategory)
     .sort((a,b) => byCategory[b] - byCategory[a])
     .map(cat => `
       <div class="summary-cat-row">
-        <span><span class="dot" style="background:${CAT_COLORS[cat]||'#a89a83'}"></span>${escapeHtml(cat)}</span>
+        <span><span class="dot" style="background:${catColorFor[cat]}"></span>${escapeHtml(cat)}</span>
         <span>${byCategory[cat].toLocaleString('uk-UA')} грн</span>
       </div>
     `).join('');
@@ -3105,6 +3229,7 @@ function renderSummary(){
   `;
   renderYearlyOverview();
   renderPeriodSummary();
+  renderDayByDay();
 }
 
 function renderPurchaseTransfer(){
@@ -3200,6 +3325,130 @@ function setPeriodRange(kind){
   renderPeriodSummary();
 }
 
+function setDbdRange(kind){
+  const today = new Date();
+  const fromInput = document.getElementById('fDbdFrom');
+  const toInput = document.getElementById('fDbdTo');
+  const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+  if(kind === 'week'){
+    const dow = (today.getDay() + 6) % 7; // Monday = 0
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - dow);
+    fromInput.value = fmt(monday);
+    toInput.value = fmt(today);
+  } else if(kind === 'month'){
+    fromInput.value = fmt(new Date(today.getFullYear(), today.getMonth(), 1));
+    toInput.value = fmt(today);
+  }
+  renderDayByDay();
+}
+
+function editIncomeEntry(id, newValStr){
+  const entry = incomeLog.find(e => e.id === id);
+  const newAmt = parseFloat(newValStr.replace(',', '.'));
+  if(!entry || !newAmt || newAmt <= 0) return;
+  totalSum += (newAmt - entry.amount);
+  entry.amount = newAmt;
+  renderSummary();
+  renderBoard();
+}
+function deleteIncomeEntry(id){
+  const entry = incomeLog.find(e => e.id === id);
+  if(!entry) return;
+  totalSum -= entry.amount;
+  incomeLog = incomeLog.filter(e => e.id !== id);
+  renderSummary();
+  renderDayByDay();
+  renderBoard();
+}
+function editExpenseEntry(id, newValStr){
+  const entry = expenseLog.find(e => e.id === id);
+  const newAmt = parseFloat(newValStr.replace(',', '.'));
+  if(!entry || !newAmt || newAmt <= 0) return;
+  totalSum -= (newAmt - entry.amount);
+  entry.amount = newAmt;
+  renderSummary();
+  renderBoard();
+}
+function deleteExpenseEntry(id){
+  const entry = expenseLog.find(e => e.id === id);
+  if(!entry) return;
+  totalSum += entry.amount;
+  expenseLog = expenseLog.filter(e => e.id !== id);
+  renderSummary();
+  renderDayByDay();
+  renderBoard();
+}
+function editClientTxEntry(id, newValStr){
+  const entry = clientTx.find(t => t.id === id);
+  const newAmt = parseFloat(newValStr.replace(',', '.'));
+  if(!entry || !newAmt || newAmt <= 0) return;
+  entry.amount = newAmt;
+  renderClientFunds();
+}
+function deleteClientTxEntry(id){
+  clientTx = clientTx.filter(t => t.id !== id);
+  renderClientFunds();
+  renderDayByDay();
+}
+
+function renderDayByDay(){
+  const body = document.getElementById('dayByDayBody');
+  if(!body) return;
+  ensureLogIds();
+
+  let fromVal = document.getElementById('fDbdFrom').value;
+  let toVal = document.getElementById('fDbdTo').value;
+  if(!fromVal && !toVal){
+    setDbdRange('week');
+    return; // setDbdRange calls renderDayByDay again with values filled in
+  }
+
+  const allEntries = [
+    ...incomeLog.map(e => ({...e, kind:'income', source:'personal'})),
+    ...expenseLog.map(e => ({...e, kind:'expense', source:'personal'})),
+    ...clientTx.map(t => ({...t, category: t.label, kind:t.type, source:'client'}))
+  ].filter(e => {
+    if(fromVal && e.date < fromVal) return false;
+    if(toVal && e.date > toVal) return false;
+    return true;
+  }).sort((a,b) => a.date.localeCompare(b.date));
+
+  if(allEntries.length === 0){
+    body.innerHTML = '<div class="summary-empty">За цей період записів немає.</div>';
+    return;
+  }
+
+  const byDate = {};
+  allEntries.forEach(e => {
+    if(!byDate[e.date]) byDate[e.date] = [];
+    byDate[e.date].push(e);
+  });
+
+  body.innerHTML = Object.keys(byDate).sort().map(date => {
+    const d = new Date(date + 'T00:00:00');
+    const label = d.toLocaleDateString('uk-UA', {day:'numeric', month:'long', weekday:'short'});
+    const rows = byDate[date].map(e => {
+      const isIncome = e.kind === 'income';
+      const editFn = e.source === 'client' ? 'editClientTxEntry' : (isIncome ? 'editIncomeEntry' : 'editExpenseEntry');
+      const delFn = e.source === 'client' ? 'deleteClientTxEntry' : (isIncome ? 'deleteIncomeEntry' : 'deleteExpenseEntry');
+      const prefix = e.source === 'client' ? '💎 ' : '';
+      const displayLabel = (e.item && !isIncome) ? `${e.item} (${e.category})` : e.category;
+      return `
+        <div class="dbd-entry">
+          <span class="dbd-type">${isIncome ? '➕' : '➖'}</span>
+          <span class="dbd-cat">${prefix}${escapeHtml(displayLabel)}</span>
+          <input type="text" inputmode="decimal" class="${isIncome?'income':'expense'}" value="${e.amount}"
+                 onchange="${editFn}(${e.id}, this.value)">
+          <button onclick="${delFn}(${e.id})" title="Видалити">✕</button>
+        </div>
+      `;
+    }).join('');
+    return `<div class="dbd-day"><div class="dbd-day-label">${label}</div>${rows}</div>`;
+  }).join('');
+}
+
 function renderPeriodSummary(){
   const body = document.getElementById('periodSummaryBody');
   if(!body) return;
@@ -3219,14 +3468,17 @@ function renderPeriodSummary(){
 
   // detailed breakdown: personal expenses by category
   const byCategory = {};
+  const catColorFor = {};
   periodExpenseEntries.forEach(e => {
-    byCategory[e.category] = (byCategory[e.category] || 0) + e.amount;
+    const key = e.item ? `${e.item} (${e.category})` : e.category;
+    byCategory[key] = (byCategory[key] || 0) + e.amount;
+    catColorFor[key] = CAT_COLORS[e.category] || '#a89a83';
   });
   const catRows = Object.keys(byCategory)
     .sort((a,b) => byCategory[b] - byCategory[a])
     .map(cat => `
       <div class="summary-cat-row">
-        <span><span class="dot" style="background:${CAT_COLORS[cat]||'#a89a83'}"></span>${escapeHtml(cat)}</span>
+        <span><span class="dot" style="background:${catColorFor[cat]}"></span>${escapeHtml(cat)}</span>
         <span>${byCategory[cat].toLocaleString('uk-UA')} грн</span>
       </div>
     `).join('');
@@ -3370,7 +3622,7 @@ function transferClientBalanceToIncome(){
     boardCells[emptyIdx] = {icon: tierIcon('Від Провидіння', balance), category:'Від Провидіння', value: balance, pieces:1};
   }
   totalSum += balance;
-  incomeLog.push({date: todayStr(), category: 'Від Провидіння', amount: balance});
+  incomeLog.push({id: logIdCounter++, date: todayStr(), category: 'Від Провидіння', amount: balance});
 
   renderBoard();
   renderSources();
@@ -3423,7 +3675,7 @@ function escalateOverdueUtilities(){
 
 let openSections = new Set(); // 'sources', 'debts', 'cat-<Category>'
 
-const SIMPLE_TOGGLE_SECTIONS = ['sources','debts','summary','purchaseTransfer','yearly','clientDebts','clientCards','periodSummary'];
+const SIMPLE_TOGGLE_SECTIONS = ['sources','debts','summary','purchaseTransfer','yearly','clientDebts','clientCards','periodSummary','dayByDay'];
 
 function toggleSection(key){
   if(openSections.has(key)) openSections.delete(key);
@@ -3844,7 +4096,7 @@ function gatherState(){
     clientCards, clientCardIdCounter,
     clientPurchaseQueue, clientPurchaseIdCounter,
     boardCells, totalSum, jarBalance, jar10Balance,
-    incomeLog, expenseLog,
+    incomeLog, expenseLog, logIdCounter,
     clientTx, archivedClientTx, clientTxIdCounter,
     debtBaseline, totalDebtPaid, totalDebtGrown,
     skippedRecurringInstances
@@ -3872,6 +4124,7 @@ function applyState(data){
   jar10Balance = data.jar10Balance || 0;
   incomeLog = data.incomeLog || [];
   expenseLog = data.expenseLog || [];
+  logIdCounter = data.logIdCounter || 1;
   clientTx = data.clientTx || [];
   archivedClientTx = data.archivedClientTx || [];
   clientTxIdCounter = data.clientTxIdCounter || 1;
@@ -3880,6 +4133,7 @@ function applyState(data){
   totalDebtGrown = data.totalDebtGrown || 0;
   skippedRecurringInstances = data.skippedRecurringInstances || [];
   selectedCellIdx = null;
+  ensureLogIds();
   if(boardCells.length > JAR_INDEX) boardCells[JAR_INDEX] = null; // JAR_INDEX is always reserved for the jar
   if(boardCells.length > JAR10_INDEX) boardCells[JAR10_INDEX] = null; // JAR10_INDEX is always reserved for the 10% jar
 }
@@ -4069,6 +4323,7 @@ function walletChoice(choice){
 }
 
 suppressSync = true;
+ensureLogIds();
 renderSources();
 renderSummary();
 renderClientFunds();
