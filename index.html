@@ -1874,9 +1874,13 @@ function tryMerge(a, b){
   const tierIdx = icons.indexOf(a.icon);
   if(tierIdx === -1) return null;
 
+  const mergedClientName = (a.clientName !== undefined || b.clientName !== undefined)
+    ? (a.clientName === b.clientName ? a.clientName : 'Змішано')
+    : undefined;
+
   if(tierIdx + 1 < icons.length){
     // normal ladder upgrade to the next tier
-    return {icon: icons[tierIdx+1], category: a.category, value: a.value + b.value, pieces: 1};
+    return {icon: icons[tierIdx+1], category: a.category, value: a.value + b.value, pieces: 1, clientName: mergedClientName};
   }
 
   // already at top tier — check if this category assembles further
@@ -1886,9 +1890,9 @@ function tryMerge(a, b){
   const totalPieces = (a.pieces || 1) + (b.pieces || 1);
   const value = a.value + b.value;
   if(totalPieces >= assembly.maxPieces){
-    return {icon: assembly.finalIcon, category: a.category, value, pieces: assembly.maxPieces};
+    return {icon: assembly.finalIcon, category: a.category, value, pieces: assembly.maxPieces, clientName: mergedClientName};
   }
-  return {icon: a.icon, category: a.category, value, pieces: totalPieces};
+  return {icon: a.icon, category: a.category, value, pieces: totalPieces, clientName: mergedClientName};
 }
 
 const CAT_COLORS = {
@@ -2171,6 +2175,7 @@ function refreshPayIconGrid(){
       <div class="icon-choice" onclick="confirmPay(${i})" style="flex-direction:column; gap:2px;">
         <div>${boardCells[i].icon}</div>
         <div style="font-size:9px; font-weight:800; color:#8a7264;">${boardCells[i].value.toLocaleString('uk-UA')}</div>
+        ${boardCells[i].clientName ? `<div style="font-size:8px; font-weight:700; color:#2E9E96;">${escapeHtml(boardCells[i].clientName)}</div>` : ''}
       </div>
     `).join('');
   }
@@ -2642,7 +2647,7 @@ function addClientIncome(){
 
   const emptyIdx = findEmptyBoardIndex();
   if(emptyIdx !== -1){
-    boardCells[emptyIdx] = {icon: tierIcon('Клієнти', amount), category:'Клієнти', value:amount, pieces:1};
+    boardCells[emptyIdx] = {icon: tierIcon('Клієнти', amount), category:'Клієнти', value:amount, pieces:1, clientName: card ? card.name : null};
     renderBoard();
   }
 
@@ -2780,6 +2785,7 @@ function refreshExecuteIconGrid(){
       <div class="icon-choice" onclick="confirmExecutePurchase(${i})" style="flex-direction:column; gap:2px;">
         <div>${boardCells[i].icon}</div>
         <div style="font-size:9px; font-weight:800; color:#8a7264;">${boardCells[i].value.toLocaleString('uk-UA')}</div>
+        ${boardCells[i].clientName ? `<div style="font-size:8px; font-weight:700; color:#2E9E96;">${escapeHtml(boardCells[i].clientName)}</div>` : ''}
       </div>
     `).join('');
   }
