@@ -2510,10 +2510,19 @@ function renderClientDebts(){
       <span class="d-name">${escapeHtml(d.name)}</span>
       <span class="d-sum">${d.sum.toLocaleString('uk-UA')}</span>
       <button class="cd-repay-btn" onclick="openRepayClientDebtModal(${d.id})">Повернути</button>
+      <button class="cd-repay-btn" style="background:#8a7264;" onclick="writeOffClientDebt(${d.id})" title="Списати залишок — гроші вже витрачені як минулий дохід, нікуди не додається">Списати залишок</button>
       <button class="d-del" onclick="deleteClientDebt(${d.id})">✕</button>
     </div>
   `).join('');
   scheduleSync();
+}
+
+function writeOffClientDebt(id){
+  const debt = clientDebts.find(d => d.id === id);
+  if(!debt) return;
+  if(!confirm(`Списати залишок ${debt.sum.toLocaleString('uk-UA')} грн у "${debt.name}"? Гроші нікуди не додаються — це минулий дохід, який вже витрачений.`)) return;
+  clientDebts = clientDebts.filter(d => d.id !== id);
+  renderClientDebts();
 }
 
 function addClientReceivable(){
@@ -2649,11 +2658,14 @@ function confirmRepayClientDebt(){
     ? null
     : {icon: tierIcon(item.category, remaining), category: item.category, value: remaining, pieces:1};
 
+  // link this back to the client's actual card, so it shows up in "Картки клієнтів"
+  // and the crystal is usable for that client's purchases going forward
+  const card = findOrCreateClientCard(debt.name);
   const emptyIdx = findEmptyBoardIndex();
   if(emptyIdx !== -1){
-    boardCells[emptyIdx] = {icon: tierIcon('Клієнти', amount), category:'Клієнти', value: amount, pieces:1};
+    boardCells[emptyIdx] = {icon: tierIcon('Клієнти', amount), category:'Клієнти', value: amount, pieces:1, clientName: card.name};
   }
-  clientTx.push({id: clientTxIdCounter++, type:'income', label: 'Повернення боргу: ' + debt.name, amount, date: todayStr()});
+  clientTx.push({id: clientTxIdCounter++, type:'income', label: 'Повернення боргу: ' + debt.name, clientId: card.id, amount, date: todayStr()});
 
   debt.sum -= amount;
   if(debt.sum <= 0){
@@ -2871,9 +2883,17 @@ function payQueuedPurchaseWithOwnMoney(id){
   const purchase = clientPurchaseQueue.find(p => p.id === id);
   if(!purchase) return;
 
+  const input = prompt(`Скільки з ${purchase.sum.toLocaleString('uk-UA')} грн оплачуєш особистими коштами?\n(можна менше — залишок лишиться в черзі)`, purchase.sum);
+  if(input === null) return;
+  const amount = parseFloat(input.replace(',', '.'));
+  if(!amount || amount <= 0 || amount > purchase.sum){
+    alert('Сума має бути більше нуля і не більше суми заявки.');
+    return;
+  }
+
   // 1) deduct from her own personal money (she's fronting the purchase)
   const usableIndexes = boardCells
-    .map((c, i) => (c && c.category !== 'Клієнти' && c.value >= purchase.sum) ? i : null)
+    .map((c, i) => (c && c.category !== 'Клієнти' && c.value >= amount) ? i : null)
     .filter(i => i !== null);
   if(usableIndexes.length === 0){
     alert('Не вистачає особистих грошей на дошці для цієї суми.');
@@ -2881,22 +2901,27 @@ function payQueuedPurchaseWithOwnMoney(id){
   }
   const cellIdx = usableIndexes[0];
   const item = boardCells[cellIdx];
-  const remaining = item.value - purchase.sum;
+  const remaining = item.value - amount;
   boardCells[cellIdx] = remaining <= 0
     ? null
     : {icon: tierIcon(item.category, remaining), category: item.category, value: remaining, pieces:1};
-  totalSum -= purchase.sum;
-  expenseLog.push({id: logIdCounter++, date: todayStr(), category: 'Ательє', item: purchase.category, amount: purchase.sum});
+  totalSum -= amount;
+  expenseLog.push({id: logIdCounter++, date: todayStr(), category: 'Ательє', item: purchase.category, amount});
 
   // 2) log the expense against the client's own ledger, so their card shows it correctly
   if(purchase.clientId){
-    clientTx.push({id: clientTxIdCounter++, type:'expense', label: purchase.category, client: purchase.clientName, clientId: purchase.clientId, amount: purchase.sum, date: todayStr()});
+    clientTx.push({id: clientTxIdCounter++, type:'expense', label: purchase.category, client: purchase.clientName, clientId: purchase.clientId, amount, date: todayStr()});
   }
 
   // 3) she's now owed this amount back from the client
-  clientReceivables.push({id: clientReceivableIdCounter++, name: purchase.clientName, sum: purchase.sum});
+  clientReceivables.push({id: clientReceivableIdCounter++, name: purchase.clientName, sum: amount});
 
-  clientPurchaseQueue = clientPurchaseQueue.filter(p => p.id !== id);
+  // if only part of the planned sum was paid, keep the rest queued
+  if(amount >= purchase.sum){
+    clientPurchaseQueue = clientPurchaseQueue.filter(p => p.id !== id);
+  } else {
+    purchase.sum -= amount;
+  }
 
   renderClientPurchaseQueue();
   renderClientFunds();
