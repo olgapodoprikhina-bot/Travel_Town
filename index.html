@@ -2770,16 +2770,21 @@ function openExecutePurchaseModal(id){
 
 function refreshExecuteIconGrid(){
   const amount = parseFloat(document.getElementById('fExecuteAmount').value.replace(',', '.')) || 0;
+  const purchase = clientPurchaseQueue.find(p => p.id === executingPurchaseId);
+  const targetClient = purchase ? purchase.clientName : null;
   const grid = document.getElementById('executeIconGrid');
+
+  const isMatch = c => c.category === 'Клієнти' && (targetClient ? c.clientName === targetClient : !c.clientName);
   const usableIndexes = boardCells
-    .map((c, i) => (c && c.category === 'Клієнти' && c.value >= amount) ? i : null)
+    .map((c, i) => (c && isMatch(c) && c.value >= amount) ? i : null)
     .filter(i => i !== null);
 
   if(usableIndexes.length === 0){
-    const hasAny = boardCells.some(c => c && c.category === 'Клієнти');
+    const hasAny = boardCells.some(c => c && isMatch(c));
+    const whoLabel = targetClient ? `кристалика клієнта «${escapeHtml(targetClient)}»` : 'непідписаного кристалика';
     grid.innerHTML = hasAny
-      ? `<div style="font-size:12.5px; color:#8a7264;">Жодному кристалику не вистачає суми (потрібно ${amount.toLocaleString('uk-UA')} грн) — об'єднай кристалики злиттям або додай ще надходження.</div>`
-      : '<div style="font-size:12.5px; color:#8a7264;">Поки немає грошей від клієнтів на дошці.</div>';
+      ? `<div style="font-size:12.5px; color:#8a7264;">Не вистачає суми на ${whoLabel} (потрібно ${amount.toLocaleString('uk-UA')} грн) — об'єднай його з іншим кристаликом того ж клієнта або додай ще надходження.</div>`
+      : `<div style="font-size:12.5px; color:#8a7264;">Немає ${whoLabel} на дошці. Перевір, чи кристалик підписаний правильним ім'ям.</div>`;
   } else {
     grid.innerHTML = usableIndexes.map(i => `
       <div class="icon-choice" onclick="confirmExecutePurchase(${i})" style="flex-direction:column; gap:2px;">
