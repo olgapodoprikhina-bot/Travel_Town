@@ -2865,10 +2865,19 @@ function confirmWriteoff(cellIdx){
     ? null
     : {icon: item.icon, category: item.category, value: remaining, pieces:1, clientName: item.clientName || null};
 
-  clientTx.push({id: clientTxIdCounter++, type:'expense', label: note || 'Списано наперед', client: card.name, clientId: card.id, amount, date: todayStr()});
+  clientTx.push({id: clientTxIdCounter++, type:'expense', label: note || 'Списано наперед (переведено в дохід)', client: card.name, clientId: card.id, amount, date: todayStr()});
+
+  // the written-off amount becomes personal income — same idea as "Перевести в дохід від Провидіння"
+  const emptyIdx = findEmptyBoardIndex();
+  if(emptyIdx !== -1){
+    boardCells[emptyIdx] = {icon: tierIcon('Від Провидіння', amount), category:'Від Провидіння', value: amount, pieces:1};
+  }
+  totalSum += amount;
+  incomeLog.push({id: logIdCounter++, date: todayStr(), category: 'Від Провидіння', amount});
 
   closeWriteoffModal();
   renderClientFunds();
+  renderSummary();
   renderBoard();
 }
 
