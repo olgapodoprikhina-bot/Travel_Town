@@ -569,6 +569,19 @@
   .cb-card .cb-row .cb-val.expense{color:var(--coral);}
   .cb-card .cb-row .cb-val.balance{color:#1E6E67;}
   .cb-card .cb-row .cb-val.planned{color:#C9A030;}
+  .cb-writeoff-btn{
+    width:100%;
+    margin-top:8px;
+    border:none;
+    background:var(--coral);
+    color:#fff;
+    border-radius:9px;
+    padding:6px 8px;
+    font-family:'Nunito',sans-serif;
+    font-weight:800;
+    font-size:10.5px;
+    cursor:pointer;
+  }
   .client-purchase-btn{
     background:var(--coral);
   }
@@ -1556,6 +1569,26 @@
       <button class="btn-cancel" onclick="closeExecutePurchaseModal()">Скасувати</button>
     </div>
     <div id="executePurchaseError" style="color:#B5483D; font-size:12px; font-weight:700; margin-top:8px; display:none;"></div>
+  </div>
+</div>
+
+<div class="overlay" id="writeoffOverlay">
+  <div class="modal">
+    <h2 id="writeoffName">✂️ Списати вручну</h2>
+    <div class="field">
+      <label>Сума, грн</label>
+      <input id="fWriteoffAmount" type="text" inputmode="decimal" oninput="refreshWriteoffIconGrid()">
+    </div>
+    <div class="field">
+      <label>Примітка (за бажанням)</label>
+      <input id="fWriteoffNote" type="text" placeholder="Наприклад: витратила наперед">
+    </div>
+    <div style="font-size:12.5px; color:#7a7264; font-weight:700; margin:10px 0;">Обери, з якого кристалика списати</div>
+    <div id="writeoffIconGrid" style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:6px;"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeWriteoffModal()">Скасувати</button>
+    </div>
+    <div id="writeoffError" style="color:#B5483D; font-size:12px; font-weight:700; margin-top:8px; display:none;"></div>
   </div>
 </div>
 
@@ -2768,6 +2801,77 @@ function openExecutePurchaseModal(id){
   document.getElementById('executePurchaseOverlay').classList.add('show');
 }
 
+let writingOffClientId = null;
+
+function openWriteoffModal(clientId){
+  const card = clientCards.find(c => c.id === clientId);
+  if(!card) return;
+  writingOffClientId = clientId;
+
+  document.getElementById('writeoffName').textContent = `✂️ Списати клієнту: ${card.name}`;
+  document.getElementById('fWriteoffAmount').value = '';
+  document.getElementById('fWriteoffNote').value = '';
+  document.getElementById('writeoffError').style.display = 'none';
+  refreshWriteoffIconGrid();
+  document.getElementById('writeoffOverlay').classList.add('show');
+}
+
+function refreshWriteoffIconGrid(){
+  const card = clientCards.find(c => c.id === writingOffClientId);
+  if(!card) return;
+  const amount = parseFloat(document.getElementById('fWriteoffAmount').value.replace(',', '.')) || 0;
+  const grid = document.getElementById('writeoffIconGrid');
+
+  const isMatch = c => c.category === 'Клієнти' && c.clientName === card.name;
+  const usableIndexes = boardCells
+    .map((c, i) => (c && isMatch(c) && c.value >= amount) ? i : null)
+    .filter(i => i !== null);
+
+  if(usableIndexes.length === 0){
+    const hasAny = boardCells.some(c => c && isMatch(c));
+    grid.innerHTML = hasAny
+      ? `<div style="font-size:12.5px; color:#8a7264;">Не вистачає суми на кристалику «${escapeHtml(card.name)}» (потрібно ${amount.toLocaleString('uk-UA')} грн) — об'єднай його з іншим кристаликом того ж клієнта.</div>`
+      : `<div style="font-size:12.5px; color:#8a7264;">Немає кристалика клієнта «${escapeHtml(card.name)}» на дошці. Перевір, чи він підписаний правильним ім'ям.</div>`;
+  } else {
+    grid.innerHTML = usableIndexes.map(i => `
+      <div class="icon-choice" onclick="confirmWriteoff(${i})" style="flex-direction:column; gap:2px;">
+        <div>${boardCells[i].icon}</div>
+        <div style="font-size:9px; font-weight:800; color:#8a7264;">${boardCells[i].value.toLocaleString('uk-UA')}</div>
+      </div>
+    `).join('');
+  }
+}
+
+function closeWriteoffModal(){
+  document.getElementById('writeoffOverlay').classList.remove('show');
+  writingOffClientId = null;
+}
+
+function confirmWriteoff(cellIdx){
+  const card = clientCards.find(c => c.id === writingOffClientId);
+  const item = boardCells[cellIdx];
+  const errEl = document.getElementById('writeoffError');
+  const amount = parseFloat(document.getElementById('fWriteoffAmount').value.replace(',', '.'));
+  const note = document.getElementById('fWriteoffNote').value.trim();
+  if(!card || !item) return;
+  if(!amount || amount <= 0 || amount > item.value){
+    errEl.textContent = 'Сума має бути більше нуля і не більше суми кристалика';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const remaining = item.value - amount;
+  boardCells[cellIdx] = remaining <= 0
+    ? null
+    : {icon: item.icon, category: item.category, value: remaining, pieces:1, clientName: item.clientName || null};
+
+  clientTx.push({id: clientTxIdCounter++, type:'expense', label: note || 'Списано наперед', client: card.name, clientId: card.id, amount, date: todayStr()});
+
+  closeWriteoffModal();
+  renderClientFunds();
+  renderBoard();
+}
+
 function refreshExecuteIconGrid(){
   const amount = parseFloat(document.getElementById('fExecuteAmount').value.replace(',', '.')) || 0;
   const purchase = clientPurchaseQueue.find(p => p.id === executingPurchaseId);
@@ -3133,6 +3237,7 @@ function renderClientBalanceCards(){
         <div class="cb-row"><span>Витрачено</span><span class="cb-val expense">${expense.toLocaleString('uk-UA')} грн</span></div>
         ${planned > 0 ? `<div class="cb-row"><span>Заплановано</span><span class="cb-val planned">${planned.toLocaleString('uk-UA')} грн</span></div>` : ''}
         <div class="cb-row"><span>Залишок</span><span class="cb-val balance">${balance.toLocaleString('uk-UA')} грн</span></div>
+        <button class="cb-writeoff-btn" onclick="openWriteoffModal(${c.id})">✂️ Списати</button>
       </div>
     `;
   }).join('')}</div>`;
