@@ -1387,6 +1387,23 @@
         </div>
       </div>
 
+      <div class="client-debt-card" style="background:#EAF3FF; border-color:rgba(30,143,196,0.35);">
+        <div class="section-toggle" onclick="toggleSection('clientReceivables')">
+          <span>🔁 Клієнт винен мені</span>
+          <span class="debts-total" id="clientReceivablesTotal" style="color:#1E8FC4;">0 грн</span>
+          <span class="toggle-arrow" id="arrow-clientReceivables">▸</span>
+        </div>
+        <div id="clientReceivablesContent" class="section-content collapsed">
+          <div class="client-note">Оплатила за клієнта своїми грошима — чекаю повернення.</div>
+          <div id="clientReceivablesList"></div>
+          <div class="debts-add-row">
+            <input id="fReceivableName" type="text" placeholder="Клієнт">
+            <input id="fReceivableSum" type="text" inputmode="decimal" placeholder="Сума">
+            <button onclick="addClientReceivable()">+</button>
+          </div>
+        </div>
+      </div>
+
       <div class="debts-card">
         <div class="section-toggle" onclick="toggleSection('debts')">
           <span>📋 Мої борги</span>
@@ -1803,6 +1820,11 @@ let debtIdCounter = 1;
 // tracked separately from personal debts, repaid from her own money back into the client pool.
 let clientDebts = [];
 let clientDebtIdCounter = 1;
+
+// "Клієнт винен мені" — the reverse: she fronted the purchase with her own personal money
+// and is waiting for the client to pay her back. When it arrives, it becomes personal income.
+let clientReceivables = [];
+let clientReceivableIdCounter = 1;
 
 const SOURCE_ICONS = {
   'Пошиття костюмів': ['🪡','🧵','✂️'],
@@ -2489,6 +2511,64 @@ function renderClientDebts(){
       <span class="d-sum">${d.sum.toLocaleString('uk-UA')}</span>
       <button class="cd-repay-btn" onclick="openRepayClientDebtModal(${d.id})">Повернути</button>
       <button class="d-del" onclick="deleteClientDebt(${d.id})">✕</button>
+    </div>
+  `).join('');
+  scheduleSync();
+}
+
+function addClientReceivable(){
+  const nameInput = document.getElementById('fReceivableName');
+  const sumInput = document.getElementById('fReceivableSum');
+  const name = nameInput.value.trim();
+  const sum = parseFloat(sumInput.value.replace(',', '.'));
+  if(!name || !sum || sum <= 0) return;
+  clientReceivables.push({id: clientReceivableIdCounter++, name, sum});
+  nameInput.value = '';
+  sumInput.value = '';
+  renderClientReceivables();
+}
+
+function deleteClientReceivable(id){
+  clientReceivables = clientReceivables.filter(r => r.id !== id);
+  renderClientReceivables();
+}
+
+function receiveClientReceivable(id){
+  const r = clientReceivables.find(x => x.id === id);
+  if(!r) return;
+
+  // the money has physically arrived — it becomes personal income now
+  const emptyIdx = findEmptyBoardIndex();
+  if(emptyIdx !== -1){
+    boardCells[emptyIdx] = {icon: tierIcon('Від Провидіння', r.sum), category:'Від Провидіння', value: r.sum, pieces:1};
+  }
+  totalSum += r.sum;
+  incomeLog.push({id: logIdCounter++, date: todayStr(), category: 'Від Провидіння', amount: r.sum});
+
+  clientReceivables = clientReceivables.filter(x => x.id !== id);
+  renderClientReceivables();
+  renderSummary();
+  renderBoard();
+}
+
+function renderClientReceivables(){
+  const list = document.getElementById('clientReceivablesList');
+  const totalEl = document.getElementById('clientReceivablesTotal');
+  if(!list || !totalEl) return;
+  const total = clientReceivables.reduce((s,r) => s + r.sum, 0);
+  totalEl.textContent = total.toLocaleString('uk-UA') + ' грн';
+
+  if(clientReceivables.length === 0){
+    list.innerHTML = '<div class="debts-empty">Поки порожньо.</div>';
+    scheduleSync();
+    return;
+  }
+  list.innerHTML = clientReceivables.map(r => `
+    <div class="debt-row">
+      <span class="d-name">${escapeHtml(r.name)}</span>
+      <span class="d-sum">${r.sum.toLocaleString('uk-UA')}</span>
+      <button class="cd-repay-btn" style="background:#1E8FC4;" onclick="receiveClientReceivable(${r.id})">Отримано</button>
+      <button class="d-del" onclick="deleteClientReceivable(${r.id})">✕</button>
     </div>
   `).join('');
   scheduleSync();
@@ -3800,7 +3880,7 @@ function escalateOverdueUtilities(){
 
 let openSections = new Set(); // 'sources', 'debts', 'cat-<Category>'
 
-const SIMPLE_TOGGLE_SECTIONS = ['sources','debts','summary','purchaseTransfer','yearly','clientDebts','clientCards','periodSummary','dayByDay'];
+const SIMPLE_TOGGLE_SECTIONS = ['sources','debts','summary','purchaseTransfer','yearly','clientDebts','clientCards','periodSummary','dayByDay','clientReceivables'];
 
 function toggleSection(key){
   if(openSections.has(key)) openSections.delete(key);
@@ -4218,6 +4298,7 @@ function gatherState(){
     sources, sourceIdCounter,
     debts, debtIdCounter,
     clientDebts, clientDebtIdCounter,
+    clientReceivables, clientReceivableIdCounter,
     clientCards, clientCardIdCounter,
     clientPurchaseQueue, clientPurchaseIdCounter,
     boardCells, totalSum, jarBalance, jar10Balance,
@@ -4239,6 +4320,8 @@ function applyState(data){
   debtIdCounter = data.debtIdCounter || 1;
   clientDebts = data.clientDebts || [];
   clientDebtIdCounter = data.clientDebtIdCounter || 1;
+  clientReceivables = data.clientReceivables || [];
+  clientReceivableIdCounter = data.clientReceivableIdCounter || 1;
   clientCards = data.clientCards || [];
   clientCardIdCounter = data.clientCardIdCounter || 1;
   clientPurchaseQueue = data.clientPurchaseQueue || [];
@@ -4268,6 +4351,7 @@ function renderEverything(){
   renderSummary();
   renderClientFunds();
   renderClientDebts();
+  renderClientReceivables();
   renderDebts();
   renderOrders();
   renderClientPurchaseQueue();
@@ -4456,6 +4540,7 @@ renderSources();
 renderSummary();
 renderClientFunds();
 renderClientDebts();
+renderClientReceivables();
 renderDebts();
 renderOrders();
 renderClientPurchaseQueue();
