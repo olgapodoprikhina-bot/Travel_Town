@@ -2201,7 +2201,7 @@ function confirmPay(cellIdx){
   order.paidDate = todayStr();
   paidOrders.push(order);
   if(paidWithClientMoney){
-    clientTx.push({id: clientTxIdCounter++, type:'expense', label: order.category, client: null, amount: payAmount, date: todayStr()});
+    clientTx.push({id: clientTxIdCounter++, type:'expense', label: order.category, client: item.clientName || null, amount: payAmount, date: todayStr()});
   } else {
     totalSum -= payAmount;
     expenseLog.push({id: logIdCounter++, date: todayStr(), category: order.category, item: order.expenseItem || null, amount: payAmount});
@@ -2223,7 +2223,7 @@ function confirmPay(cellIdx){
   if(remaining <= 0){
     boardCells[cellIdx] = null;
   } else {
-    boardCells[cellIdx] = {icon: tierIcon(item.category, remaining), category:item.category, value:remaining, pieces:1};
+    boardCells[cellIdx] = {icon: tierIcon(item.category, remaining), category:item.category, value:remaining, pieces:1, clientName: item.clientName};
   }
 
   closePayModal();
@@ -2811,7 +2811,7 @@ function confirmExecutePurchase(cellIdx){
   const remaining = item.value - amount;
   boardCells[cellIdx] = remaining <= 0
     ? null
-    : {icon: item.icon, category: item.category, value: remaining, pieces:1};
+    : {icon: item.icon, category: item.category, value: remaining, pieces:1, clientName: item.clientName};
 
   clientTx.push({id: clientTxIdCounter++, type:'expense', label: purchase.category, client: purchase.clientName, clientId: purchase.clientId, amount, date: todayStr()});
   clientPurchaseQueue = clientPurchaseQueue.filter(p => p.id !== purchase.id);
