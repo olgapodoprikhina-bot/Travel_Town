@@ -1808,8 +1808,8 @@ const ORDER_ICONS = {
   'Дуже треба': ['💝','🎁','💎']
 };
 let sources = [
-  {id:'s1', name:'Пошиття костюмів', category:'Пошиття костюмів', clicks:0},
-  {id:'s2', name:'Від Провидіння', category:'Від Провидіння', clicks:0}
+  {id:'s1', name:'Пошиття костюмів', category:'Мій прихід', clicks:0},
+  {id:'s2', name:'Від Провидіння', category:'Мій прихід', clicks:0}
 ];
 let sourceIdCounter = 3;
 
@@ -1827,9 +1827,8 @@ let clientReceivables = [];
 let clientReceivableIdCounter = 1;
 
 const SOURCE_ICONS = {
-  'Пошиття костюмів': ['🪡','🧵','✂️'],
-  'Від Провидіння': ['🍬','🍭','🍰'],
-  'Клієнти': ['💎','💎','💎'] // same icon at every tier — value grows, look never changes
+  'Мій прихід': ['🪡','🧵','✂️'],
+  'Матеріали від клієнта': ['💎','💎','💎'] // same icon at every tier — value grows, look never changes
 };
 
 function tierForAmount(amt){
@@ -1915,8 +1914,7 @@ const MANNEQUIN_SVG = `<svg viewBox="0 0 100 150" width="26" height="26" style="
 </svg>`;
 
 const ASSEMBLY = {
-  'Від Провидіння': {maxPieces: 6, finalIcon: '🎂'},
-  'Пошиття костюмів': {maxPieces: 6, finalIcon: MANNEQUIN_SVG}
+  'Мій прихід': {maxPieces: 6, finalIcon: '🎂'}
 };
 
 // merge rule: two items of the same category and same tier combine into the next tier of that category
@@ -2217,11 +2215,11 @@ function refreshPayIconGrid(){
 
   const grid = document.getElementById('payIconGrid');
   const usableIndexes = boardCells
-    .map((c, i) => (c && (allowClientMoney || c.category !== 'Клієнти') && c.value >= payAmount) ? i : null)
+    .map((c, i) => (c && (allowClientMoney || c.category !== 'Матеріали від клієнта') && c.value >= payAmount) ? i : null)
     .filter(i => i !== null);
 
   if(usableIndexes.length === 0){
-    const hasAny = boardCells.some(c => c !== null && (allowClientMoney || c.category !== 'Клієнти'));
+    const hasAny = boardCells.some(c => c !== null && (allowClientMoney || c.category !== 'Матеріали від клієнта'));
     grid.innerHTML = hasAny
       ? `<div style="font-size:12.5px; color:#8a7264;">Жодній іконці не вистачає суми (потрібно ${payAmount.toLocaleString('uk-UA')} грн) — накопич ще або об'єднай іконки злиттям.</div>`
       : `<div style="font-size:12.5px; color:#8a7264;">На дошці поки немає іконок для оплати${allowClientMoney ? '' : ' (гроші клієнтів сюди не рахуються)'}.</div>`;
@@ -2250,7 +2248,7 @@ function confirmPay(cellIdx){
 
   const payAmount = currentPayAmount();
   const overpay = payAmount - order.sum;
-  const paidWithClientMoney = item.category === 'Клієнти';
+  const paidWithClientMoney = item.category === 'Матеріали від клієнта';
 
   orders.splice(idx,1);
   order.paidDate = todayStr();
@@ -2549,10 +2547,10 @@ function receiveClientReceivable(id){
   // the money has physically arrived — it becomes personal income now
   const emptyIdx = findEmptyBoardIndex();
   if(emptyIdx !== -1){
-    boardCells[emptyIdx] = {icon: tierIcon('Від Провидіння', r.sum), category:'Від Провидіння', value: r.sum, pieces:1};
+    boardCells[emptyIdx] = {icon: tierIcon('Мій прихід', r.sum), category:'Мій прихід', value: r.sum, pieces:1};
   }
   totalSum += r.sum;
-  incomeLog.push({id: logIdCounter++, date: todayStr(), category: 'Від Провидіння', amount: r.sum});
+  incomeLog.push({id: logIdCounter++, date: todayStr(), category: 'Мій прихід', amount: r.sum});
 
   clientReceivables = clientReceivables.filter(x => x.id !== id);
   renderClientReceivables();
@@ -2599,7 +2597,7 @@ function openRepayClientDebtModal(id){
   document.getElementById('fRepayAmount').value = '';
 
   const sourceIndexes = boardCells
-    .map((c, i) => (i !== JAR_INDEX && i !== JAR10_INDEX && c && c.category !== 'Клієнти') ? i : null)
+    .map((c, i) => (i !== JAR_INDEX && i !== JAR10_INDEX && c && c.category !== 'Матеріали від клієнта') ? i : null)
     .filter(i => i !== null);
 
   const grid = document.getElementById('repaySourceGrid');
@@ -2663,7 +2661,7 @@ function confirmRepayClientDebt(){
   const card = findOrCreateClientCard(debt.name);
   const emptyIdx = findEmptyBoardIndex();
   if(emptyIdx !== -1){
-    boardCells[emptyIdx] = {icon: tierIcon('Клієнти', amount), category:'Клієнти', value: amount, pieces:1, clientName: card.name};
+    boardCells[emptyIdx] = {icon: tierIcon('Матеріали від клієнта', amount), category:'Матеріали від клієнта', value: amount, pieces:1, clientName: card.name};
   }
   clientTx.push({id: clientTxIdCounter++, type:'income', label: 'Повернення боргу: ' + debt.name, clientId: card.id, amount, date: todayStr()});
 
@@ -2772,7 +2770,7 @@ function addClientIncome(){
 
   const emptyIdx = findEmptyBoardIndex();
   if(emptyIdx !== -1){
-    boardCells[emptyIdx] = {icon: tierIcon('Клієнти', amount), category:'Клієнти', value:amount, pieces:1, clientName: card ? card.name : null};
+    boardCells[emptyIdx] = {icon: tierIcon('Матеріали від клієнта', amount), category:'Матеріали від клієнта', value:amount, pieces:1, clientName: card ? card.name : null};
     renderBoard();
   }
 
@@ -2801,7 +2799,7 @@ function openPurchaseModal(){
   clientSel.innerHTML = '<option value="">— не вказано —</option>' +
     activeClients.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
 
-  const clientItems = boardCells.filter(c => c && c.category === 'Клієнти');
+  const clientItems = boardCells.filter(c => c && c.category === 'Матеріали від клієнта');
   const availEl = document.getElementById('purchaseAvailable');
   if(clientItems.length === 0){
     availEl.textContent = '💎 Поки немає грошей від клієнтів на дошці — спочатку додай надходження.';
@@ -2893,7 +2891,7 @@ function payQueuedPurchaseWithOwnMoney(id){
 
   // 1) deduct from her own personal money (she's fronting the purchase)
   const usableIndexes = boardCells
-    .map((c, i) => (c && c.category !== 'Клієнти' && c.value >= amount) ? i : null)
+    .map((c, i) => (c && c.category !== 'Матеріали від клієнта' && c.value >= amount) ? i : null)
     .filter(i => i !== null);
   if(usableIndexes.length === 0){
     alert('Не вистачає особистих грошей на дошці для цієї суми.');
@@ -2965,7 +2963,7 @@ function refreshWriteoffIconGrid(){
   const amount = parseFloat(document.getElementById('fWriteoffAmount').value.replace(',', '.')) || 0;
   const grid = document.getElementById('writeoffIconGrid');
 
-  const isMatch = c => c.category === 'Клієнти' && c.clientName === card.name;
+  const isMatch = c => c.category === 'Матеріали від клієнта' && c.clientName === card.name;
   const usableIndexes = boardCells
     .map((c, i) => (c && isMatch(c) && c.value >= amount) ? i : null)
     .filter(i => i !== null);
@@ -3013,10 +3011,10 @@ function confirmWriteoff(cellIdx){
   // the written-off amount becomes personal income — same idea as "Перевести в дохід від Провидіння"
   const emptyIdx = findEmptyBoardIndex();
   if(emptyIdx !== -1){
-    boardCells[emptyIdx] = {icon: tierIcon('Від Провидіння', amount), category:'Від Провидіння', value: amount, pieces:1};
+    boardCells[emptyIdx] = {icon: tierIcon('Мій прихід', amount), category:'Мій прихід', value: amount, pieces:1};
   }
   totalSum += amount;
-  incomeLog.push({id: logIdCounter++, date: todayStr(), category: 'Від Провидіння', amount});
+  incomeLog.push({id: logIdCounter++, date: todayStr(), category: 'Мій прихід', amount});
 
   closeWriteoffModal();
   renderClientFunds();
@@ -3030,7 +3028,7 @@ function refreshExecuteIconGrid(){
   const targetClient = purchase ? purchase.clientName : null;
   const grid = document.getElementById('executeIconGrid');
 
-  const isMatch = c => c.category === 'Клієнти' && (targetClient ? c.clientName === targetClient : !c.clientName);
+  const isMatch = c => c.category === 'Матеріали від клієнта' && (targetClient ? c.clientName === targetClient : !c.clientName);
   const usableIndexes = boardCells
     .map((c, i) => (c && isMatch(c) && c.value >= amount) ? i : null)
     .filter(i => i !== null);
@@ -3161,7 +3159,7 @@ function openJarModal(){
   jarSourceCellIdx = null;
 
   const sourceIndexes = boardCells
-    .map((c, i) => (i !== JAR_INDEX && i !== JAR10_INDEX && c && c.category !== 'Клієнти' && c.category !== 'Банка') ? i : null)
+    .map((c, i) => (i !== JAR_INDEX && i !== JAR10_INDEX && c && c.category !== 'Матеріали від клієнта' && c.category !== 'Банка') ? i : null)
     .filter(i => i !== null);
 
   const grid = document.getElementById('jarSourceGrid');
@@ -3244,10 +3242,10 @@ function confirmJarWithdraw(){
   // money comes back onto the board as personal income (Від Провидіння tier), keeping totalSum == sum(board)
   const emptyIdx = findEmptyBoardIndex();
   if(emptyIdx !== -1){
-    boardCells[emptyIdx] = {icon: tierIcon('Від Провидіння', amount), category:'Від Провидіння', value: amount, pieces:1};
+    boardCells[emptyIdx] = {icon: tierIcon('Мій прихід', amount), category:'Мій прихід', value: amount, pieces:1};
   }
   totalSum += amount;
-  incomeLog.push({id: logIdCounter++, date: todayStr(), category: 'Від Провидіння', amount});
+  incomeLog.push({id: logIdCounter++, date: todayStr(), category: 'Мій прихід', amount});
 
   closeJarModal();
   renderBoard();
@@ -3268,7 +3266,7 @@ function openJar10Modal(){
   jar10SourceCellIdx = null;
 
   const sourceIndexes = boardCells
-    .map((c, i) => (i !== JAR_INDEX && i !== JAR10_INDEX && c && c.category !== 'Клієнти') ? i : null)
+    .map((c, i) => (i !== JAR_INDEX && i !== JAR10_INDEX && c && c.category !== 'Матеріали від клієнта') ? i : null)
     .filter(i => i !== null);
 
   const grid = document.getElementById('jar10SourceGrid');
@@ -3880,7 +3878,7 @@ function transferClientBalanceToIncome(){
   if(balance <= 0) return;
 
   // remove the client (crystal) icons from the board — that value is now converted
-  boardCells = boardCells.map(c => (c && c.category === 'Клієнти') ? null : c);
+  boardCells = boardCells.map(c => (c && c.category === 'Матеріали від клієнта') ? null : c);
 
   // zero out the client ledger transparently (shows up as a labeled expense in history)
   clientTx.push({id: clientTxIdCounter++, type:'expense', label:'Переведення в особистий дохід', amount: balance, date: todayStr()});
@@ -3888,10 +3886,10 @@ function transferClientBalanceToIncome(){
   // add to personal income under Від Провидіння
   const emptyIdx = findEmptyBoardIndex();
   if(emptyIdx !== -1){
-    boardCells[emptyIdx] = {icon: tierIcon('Від Провидіння', balance), category:'Від Провидіння', value: balance, pieces:1};
+    boardCells[emptyIdx] = {icon: tierIcon('Мій прихід', balance), category:'Мій прихід', value: balance, pieces:1};
   }
   totalSum += balance;
-  incomeLog.push({id: logIdCounter++, date: todayStr(), category: 'Від Провидіння', amount: balance});
+  incomeLog.push({id: logIdCounter++, date: todayStr(), category: 'Мій прихід', amount: balance});
 
   renderBoard();
   renderSources();
@@ -4064,9 +4062,12 @@ const LEGACY_CATEGORY_MAP = {
   'Прожиточный минимум': 'Прожитковий мінімум',
   'Непредвиденные расходы': 'Непередбачені витрати',
   'Ну очень надо': 'Дуже треба',
-  'Пошив костюмов': 'Пошиття костюмів',
-  'От Провидения': 'Від Провидіння',
-  'Клиенты': 'Клієнти'
+  'Пошив костюмов': 'Мій прихід',
+  'От Провидения': 'Мій прихід',
+  'Клиенты': 'Матеріали від клієнта',
+  'Пошиття костюмів': 'Мій прихід',
+  'Від Провидіння': 'Мій прихід',
+  'Клієнти': 'Матеріали від клієнта'
 };
 
 function migrateLegacyCategories(){
