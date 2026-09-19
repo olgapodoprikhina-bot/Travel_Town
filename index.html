@@ -126,6 +126,40 @@
   }
   .collapsed{display:none !important;}
 
+  /* --- Sidebar menu grouping --- */
+  .menu-group{
+    margin-top:18px;
+    background:rgba(255,255,255,0.14);
+    border-radius:20px;
+    padding:10px 8px 4px;
+  }
+  .menu-group:first-of-type{ margin-top:6px; }
+  .menu-group-title{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    margin:2px 4px 8px;
+    font-family:'Baloo 2',cursive;
+    font-size:14.5px;
+    font-weight:800;
+    color:#fff;
+    text-shadow:0 1px 2px rgba(0,0,0,0.12);
+  }
+  .menu-group-title::after{
+    content:'';
+    flex:1;
+    height:2px;
+    border-radius:2px;
+    background:var(--mg-accent, rgba(255,255,255,0.5));
+  }
+  .menu-group > .summary-card,
+  .menu-group > .sources-card,
+  .menu-group > .client-debt-card,
+  .menu-group > .debts-card{
+    margin-top:8px;
+  }
+  .menu-group > *:first-child{ margin-top:0 !important; }
+
   /* --- Monthly income/expense summary --- */
   .summary-card{
     margin-top:8px;
@@ -1265,6 +1299,8 @@
         <div class="calendar-grid" id="calendarGrid"></div>
       </div>
 
+      <div class="menu-group" style="--mg-accent: var(--grape);">
+      <div class="menu-group-title">📊 Аналітика</div>
       <div class="summary-card">
         <div class="section-toggle" onclick="toggleSection('periodSummary')">
           <span>🔍 Зведення за період</span>
@@ -1313,7 +1349,10 @@
           <div id="yearlyBody"></div>
         </div>
       </div>
+      </div>
 
+      <div class="menu-group" style="--mg-accent: var(--sun);">
+      <div class="menu-group-title">💰 Особисті гроші</div>
       <div class="sources-card">
         <div class="section-toggle" onclick="toggleSection('sources')">
           <span>💰 Джерела доходу</span>
@@ -1350,6 +1389,25 @@
         </div>
       </div>
 
+      <div class="debts-card">
+        <div class="section-toggle" onclick="toggleSection('debts')">
+          <span>📋 Мої борги</span>
+          <span class="debts-total" id="debtsTotal">0 грн</span>
+          <span class="toggle-arrow" id="arrow-debts">▸</span>
+        </div>
+        <div id="debtsContent" class="section-content collapsed">
+          <div id="debtsList"></div>
+          <div class="debts-add-row">
+            <input id="fDebtName" type="text" placeholder="Назва">
+            <input id="fDebtSum" type="text" inputmode="decimal" placeholder="Сумма">
+            <button onclick="addDebt()">+</button>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      <div class="menu-group" style="--mg-accent: var(--sky-deep);">
+      <div class="menu-group-title">👥 Клієнти</div>
       <div class="summary-card client-summary-card">
         <div class="section-toggle" onclick="toggleSection('purchaseTransfer')">
           <span>💎 Трансфер закупівель</span>
@@ -1404,20 +1462,6 @@
         </div>
       </div>
 
-      <div class="debts-card">
-        <div class="section-toggle" onclick="toggleSection('debts')">
-          <span>📋 Мої борги</span>
-          <span class="debts-total" id="debtsTotal">0 грн</span>
-          <span class="toggle-arrow" id="arrow-debts">▸</span>
-        </div>
-        <div id="debtsContent" class="section-content collapsed">
-          <div id="debtsList"></div>
-          <div class="debts-add-row">
-            <input id="fDebtName" type="text" placeholder="Назва">
-            <input id="fDebtSum" type="text" inputmode="decimal" placeholder="Сумма">
-            <button onclick="addDebt()">+</button>
-          </div>
-        </div>
       </div>
     </div>
 
