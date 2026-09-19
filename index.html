@@ -2546,9 +2546,11 @@ function receiveClientReceivable(id){
 
   // the money has physically arrived — it becomes personal income now
   const emptyIdx = findEmptyBoardIndex();
-  if(emptyIdx !== -1){
-    boardCells[emptyIdx] = {icon: tierIcon('Мій прихід', r.sum), category:'Мій прихід', value: r.sum, pieces:1};
+  if(emptyIdx === -1){
+    alert('Дошка заповнена — звільни клітинку, перш ніж прийняти ці гроші.');
+    return;
   }
+  boardCells[emptyIdx] = {icon: tierIcon('Мій прихід', r.sum), category:'Мій прихід', value: r.sum, pieces:1};
   totalSum += r.sum;
   incomeLog.push({id: logIdCounter++, date: todayStr(), category: 'Мій прихід', amount: r.sum});
 
@@ -3010,9 +3012,11 @@ function confirmWriteoff(cellIdx){
 
   // the written-off amount becomes personal income — same idea as "Перевести в дохід від Провидіння"
   const emptyIdx = findEmptyBoardIndex();
-  if(emptyIdx !== -1){
-    boardCells[emptyIdx] = {icon: tierIcon('Мій прихід', amount), category:'Мій прихід', value: amount, pieces:1};
+  if(emptyIdx === -1){
+    alert('Дошка заповнена — звільни клітинку, перш ніж списати цю суму в дохід.');
+    return;
   }
+  boardCells[emptyIdx] = {icon: tierIcon('Мій прихід', amount), category:'Мій прихід', value: amount, pieces:1};
   totalSum += amount;
   incomeLog.push({id: logIdCounter++, date: todayStr(), category: 'Мій прихід', amount});
 
@@ -3239,11 +3243,13 @@ function confirmJarWithdraw(){
 
   jarBalance -= amount;
 
-  // money comes back onto the board as personal income (Від Провидіння tier), keeping totalSum == sum(board)
+  // money comes back onto the board as personal income (Мій прихід tier), keeping totalSum == sum(board)
   const emptyIdx = findEmptyBoardIndex();
-  if(emptyIdx !== -1){
-    boardCells[emptyIdx] = {icon: tierIcon('Мій прихід', amount), category:'Мій прихід', value: amount, pieces:1};
+  if(emptyIdx === -1){
+    alert('Дошка заповнена — звільни клітинку, перш ніж зняти гроші із заначки.');
+    return;
   }
+  boardCells[emptyIdx] = {icon: tierIcon('Мій прихід', amount), category:'Мій прихід', value: amount, pieces:1};
   totalSum += amount;
   incomeLog.push({id: logIdCounter++, date: todayStr(), category: 'Мій прихід', amount});
 
@@ -3883,11 +3889,13 @@ function transferClientBalanceToIncome(){
   // zero out the client ledger transparently (shows up as a labeled expense in history)
   clientTx.push({id: clientTxIdCounter++, type:'expense', label:'Переведення в особистий дохід', amount: balance, date: todayStr()});
 
-  // add to personal income under Від Провидіння
+  // add to personal income under Мій прихід
   const emptyIdx = findEmptyBoardIndex();
-  if(emptyIdx !== -1){
-    boardCells[emptyIdx] = {icon: tierIcon('Мій прихід', balance), category:'Мій прихід', value: balance, pieces:1};
+  if(emptyIdx === -1){
+    alert('Дошка заповнена — звільни клітинку, перш ніж перевести залишок у дохід.');
+    return;
   }
+  boardCells[emptyIdx] = {icon: tierIcon('Мій прихід', balance), category:'Мій прихід', value: balance, pieces:1};
   totalSum += balance;
   incomeLog.push({id: logIdCounter++, date: todayStr(), category: 'Мій прихід', amount: balance});
 
